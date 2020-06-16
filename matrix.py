@@ -16,11 +16,8 @@ class Matrix:
     def __setitem__(self, key) -> int:
         return setattr(self.data, key)
 
-    def display(self) -> None:
-        for row in self.data:
-            for val in row:
-                print(val, end = " ")
-            print()
+    def display(self, tabspace=3) -> None:
+        print('\n'.join('\t'.join(str(v) for v in row).expandtabs(tabspace) for row in self.data))
 
     def getRow(self, row_i) -> List[int]:
         if row_i >= self.rows or row_i <0:
