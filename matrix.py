@@ -16,11 +16,8 @@ class Matrix:
     def __setitem__(self, key) -> int:
         return setattr(self.data, key)
 
-    def display(self) -> None:
-        for row in self.data:
-            for val in row:
-                print(val, end = " ")
-            print()
+    def display(self, tabspace=3) -> None:
+        print('\n'.join('\t'.join(str(v) for v in row).expandtabs(tabspace) for row in self.data))
 
     @classmethod
     def zeros(cls, rows, cols):
