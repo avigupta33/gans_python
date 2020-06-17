@@ -13,12 +13,16 @@ if __name__ == "__main__":
     mat2 = Matrix.const(rows=6, cols=5, val=4)
     res = Matrix.multiply(mat1, mat2)
 
-    for row in mat1.iterRow():
-        for col in mat2.iterCol():
-            print(list(col),list(row))
 
-    print()
 
-    mat1.display()
-    mat2.display()
-    res.display()
+    # mat1.display()
+    # mat2.display()
+    print(res.data)
+    # res.display()
+
+    # def factory():
+    #     return (x for x in range(5))
+
+    # for i in range(3):
+    #     for num in factory():
+    #         print(num)
