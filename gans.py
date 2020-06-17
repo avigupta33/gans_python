@@ -13,16 +13,7 @@ if __name__ == "__main__":
     mat2 = Matrix.const(rows=6, cols=5, val=4)
     res = Matrix.multiply(mat1, mat2)
 
-
-
-    # mat1.display()
-    # mat2.display()
-    # print(res.data)
+    mat1.display()
+    mat2.display()
     res.display()
 
-    # def factory():
-    #     return (x for x in range(5))
-
-    # for i in range(3):
-    #     for num in factory():
-    #         print(num)

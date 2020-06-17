@@ -25,8 +25,7 @@ class Matrix:
         self.data[row * self.cols + col] = value
 
     def display(self, tabspace=3) -> None:
-        # might be able to optimize more now that data is flattened
-        print('\n'.join('\t'.join(str(v) for v in self.getRow(row_i)).expandtabs(tabspace) for row_i in range(self.rows)))
+        print('\n'.join('\t'.join(str(x) for x in row()).expandtabs(tabspace) for row in self.iterRow()))
 
     def getRow(self, row_i) -> Sequence[int]:
         if row_i >= self.rows or row_i < 0:
@@ -37,6 +36,16 @@ class Matrix:
         if col_i >= self.cols or col_i <0:
             raise ValueError(f"Matrix with {self.cols} does not have col at {col_i}")
         return (self.data[x] for x in range(col_i, self.rows * self.cols, self.cols))
+
+    def iterRow(self):
+        begin, end = 0, self.cols
+        for row_i in range(self.rows):
+            yield lambda: (self.data[x] for x in range(begin, end))
+            begin, end = end, end + self.cols
+
+    def iterCol(self):
+        for col_i in range(self.cols):
+            yield lambda: (self.data[x] for x in range(col_i, self.rows*self.cols, self.cols))
 
     @classmethod
     def zeros(cls, rows, cols):
@@ -57,24 +66,6 @@ class Matrix:
                              f"while Matrix 2 has dims {mat2.rows, mat2.cols}. "
                              f"Incompatible for multiplication")
 
-        def rowFactory(mat):
-            begin, end = 0, mat.cols
-            for row_i in range(mat.rows):
-                yield lambda: (mat.data[x] for x in range(begin, end))
-                begin, end = end, end + mat.cols
-
-        def colFactory(mat):
-            for col_i in range(mat.cols):
-                yield lambda: (mat.data[x] for x in range(col_i, mat.rows * mat.cols, mat.cols))
-        
-        array = []
-        for col in colFactory(mat2):
-            for row in rowFactory(mat1):
-                # Here, getRow() and getCol() act as generator factories by returning fresh generators
-                # How can we make it so that we don't need to pass them indices?
-                # Make a function that returns a generator that returns a function that returns a generator that returns an int :)
-                # Basically, make a iterCols() funcion that will give you a generator that 
-
-                array.append(sum(a*b for a,b in zip(row(), col())))
+        array = [sum(a*b for a,b in zip(row(), col())) for row in mat1.iterRow() for col in mat2.iterCol()]
 
         return Matrix(mat1.rows, mat2.cols, array)
