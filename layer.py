@@ -26,42 +26,6 @@ class Layer:
 
 class FCLayer(Layer):
 
-    def __init__(self, num_inputs: int, num_outputs: int, activation) -> None:
-        self.weights: ClassVar[Matrix] = Matrix.random_gauss(rows=num_outputs, cols=num_inputs)
-        self.biases: ClassVar[Vector] = Matrix.zeros(rows=num_outputs, cols=1)
-        self.activation = activation
-
-
-    def forwards(self, input_vector: Vector) -> Vector:
-        self.input_vector: ClassVar[Vector] = input_vector
-        return Matrix.multiply(self.weights, input_vector)
-
-
-    def backwards(self, output_grad: Vector) -> Vector:
-        # need to discuss learning rate & stuff before implementing
-        raise NotImplementedError
-
-
-class ActivationLayer(Layer):
-
-    def __init__(self, activator: str) -> None:
-        if activator in ('forwards', 'backwards'):
-            raise ValueError(f"Illegal activator name received: {activator}")
-        if not hasattr(ActivationLayer, activator):
-            raise ValueError(f"ActivationLayer has no {activator} activator")
-        self.activator: ClassVar['Activator'] = getattr(ActivationLayer, activator)
-
-
-    def forwards(self, input_vector: Vector) -> Vector:
-        self.input_vector = input_vector
-        data = [self.activator.forwards(x) for x in input_vector.data]
-        return Matrix(input_vector.rows, input_vector.cols, data)
-
-
-    def backwards(self, output_grad: Vector) -> Vector:
-        raise NotImplementedError
-
-
     class Activator:
         # By storing everything explicitly in a class instead of 
         # a mutable data structure, python can optimize
@@ -74,6 +38,31 @@ class ActivationLayer(Layer):
         @staticmethod
         def backwards(output_grad: T) -> T:
             raise NotImplementedError
+
+
+    def __init__(self, num_inputs: int, num_outputs: int, activator: str="ReLU") -> None:
+
+        # Initialize weights and biases
+        self.weights: ClassVar[Matrix] = Matrix.random_gauss(rows=num_outputs, cols=num_inputs)
+        self.biases: ClassVar[Vector] = Matrix.zeros(rows=num_outputs, cols=1)
+
+        # Initialize activation function
+        if activator not in (sub.__name__ for sub in FCLayer.Activator.__subclasses__()):
+            raise ValueError(f"Activator '{activator}' doesn't exist")
+        self.activator: ClassVar[Activator] = getattr(FCLayer, activator)
+
+
+    def forwards(self, input_vector: Vector) -> Vector:
+        self.input_vector: ClassVar[Vector] = input_vector
+        self.pre_activate: ClassVar[Vector] = self.weights @ self.input_vector
+        output_data = [self.activator.forwards(x) for x in self.pre_activate.data]
+        return Matrix(self.weights.rows, 1, output_data)
+
+
+    def backwards(self, output_grad: Vector) -> Vector:
+        # need to discuss learning rate & stuff before implementing
+        raise NotImplementedError
+
 
 
     class ReLU(Activator):
@@ -92,7 +81,7 @@ class ActivationLayer(Layer):
 
         @staticmethod
         def forwards(input_scalar: T) -> T:
-            return 0.01*input_scalar if input_scalar <= 0 else input_scalar
+            return input_scalar*0.01 if input_scalar <= 0 else input_scalar
 
         @staticmethod
         def backwards(output_grad: T) -> T:
@@ -107,10 +96,10 @@ class ActivationLayer(Layer):
 
         @staticmethod
         def backwards(output_grad: T) -> T:
-            return 1 - (math.tanh(output_grad)) ** 2
+            return 1 - (math.tanh(output_grad)**2)
 
 
 # Example: 
-# x = ActivationLayer('ReLU')
-# print(x.activator.forwards(-5))
+# x = FCLayer(100, 5, 'LeakyReLU')
+# print(x.activator.forwards(-100))
 # >>> 0
