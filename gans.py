@@ -17,8 +17,8 @@ if __name__ == "__main__":
 
     # mat1.display()
     # mat2.display()
-    print(res.data)
-    # res.display()
+    # print(res.data)
+    res.display()
 
     # def factory():
     #     return (x for x in range(5))
