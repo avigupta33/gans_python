@@ -18,6 +18,6 @@ def runTests(title: str, tests: List[Callable[[], bool]]) -> None:
                 num_passed += 1
             else:
                 print(f"Failed on {test.__name__}")
-        except Exception:
-            print(f"Uncaught exception on {test.__name__}")
+        except Exception as e:
+            print(f"Uncaught exception on {test.__name__}: {e}")
     print(f"{title} passed {num_passed}/{len(tests)} cases")

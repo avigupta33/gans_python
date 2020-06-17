@@ -21,7 +21,7 @@ def testMatMul1() -> bool:
     mat1 = Matrix.const(rows=4, cols=6, val=3)
     mat2 = Matrix.const(rows=6, cols=5, val=4)
     expected = Matrix.const(rows=4, cols=5, val=72)
-    received = Matrix.multiply(mat1, mat2)
+    received = mat1 @ mat2
     return expected == received
 
 
@@ -36,15 +36,14 @@ def testMatMul2() -> bool:
         66, 81, 96,
         102, 126, 150
     ])
-    received = Matrix.multiply(mat, mat)
+    received = mat @ mat
     return expected == received
-
 
 def testMatMulFail1() -> bool:
     mat1 = Matrix.const(rows=4, cols=6, val=3)
     mat2 = Matrix.const(rows=6, cols=5, val=4)
     try:
-        Matrix.multiply(mat2, mat1)
+        mat2 @ mat1
         return False
     except ValueError as e:
         return str(e) == "Matrix A has dims (6, 5) while Matrix B has dims (4, 6). Incompatible for multiplication"
