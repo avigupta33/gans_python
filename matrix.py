@@ -8,9 +8,9 @@ class Matrix:
 
     def __init__(self, rows: int, cols: int, data: List[T]) -> None:
         if (rows <= 0):
-            raise ValueError("Rows must be positive, is {rows}")
+            raise ValueError(f"Rows must be positive, is {rows}")
         if (cols <= 0):
-            raise ValueError("Cols must be positive, is {cols}")
+            raise ValueError(f"Cols must be positive, is {cols}")
         self.rows: ClassVar[int] = rows
         self.cols: ClassVar[int] = cols
         self.data: ClassVar[List[T]] = data
