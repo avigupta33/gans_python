@@ -26,9 +26,10 @@ class Layer:
 
 class FCLayer(Layer):
 
-    def __init__(self, num_inputs: int, num_outputs: int) -> None:
+    def __init__(self, num_inputs: int, num_outputs: int, activation) -> None:
         self.weights: ClassVar[Matrix] = Matrix.random_gauss(rows=num_outputs, cols=num_inputs)
         self.biases: ClassVar[Vector] = Matrix.zeros(rows=num_outputs, cols=1)
+        self.activation = activation
 
 
     def forwards(self, input_vector: Vector) -> Vector:
