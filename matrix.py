@@ -48,7 +48,7 @@ class Matrix:
 
     def iterRow(self) -> Generator[Callable[[], VectorIter], None, None]:
         '''Generates VectorIter factory objects for rows'''
-        for row_begin in range(0, self.rows, self.cols):
+        for row_begin in range(0, self.rows*self.cols, self.cols):
             yield lambda: (self.data[x] for x in range(row_begin, row_begin + self.cols))
 
 
