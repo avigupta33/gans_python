@@ -5,6 +5,7 @@ Layer class for neural networks
 
 from matrix import Matrix, T
 from typing import *
+import math
 
 Vector = Matrix # 1D matrices only
 
@@ -90,8 +91,7 @@ class ActivationLayer(Layer):
 
         @staticmethod
         def forwards(input_scalar: T) -> T:
-            raise NotImplementedError
-
+            return math.tanh(input_scalar)
 
         @staticmethod
         def backwards(output_grad: T) -> T:
