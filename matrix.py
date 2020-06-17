@@ -1,7 +1,12 @@
+
+'''
+Matrix class for neural networks
+'''
+
 from typing import *
 import random
 
-T = Any # matrix type
+T = Any # Matrix type
 VectorIter = Iterator[T]
 
 class Matrix:
@@ -28,6 +33,33 @@ class Matrix:
     def __setitem__(self, key: Tuple[int, int], value: T) -> None:
         row, col = key
         self.data[row * self.cols + col] = value
+
+
+    def __add__(self, m: 'Matrix') -> 'Matrix':
+        if self.cols != m.cols or self.rows != m.rows:
+            raise ValueError(f"Matrix A has dims {self.rows, self.cols} "
+                             f"while Matrix B has dims {m.rows, m.cols}. "
+                             f"Incompatible for addition")
+
+        data = [a+b for a,b in zip(self.data, m.data)]
+        return Matrix(self.rows, self.cols, data)
+
+
+    def __eq__(self, m: 'Matrix') -> bool:
+        return (self.rows == m.rows and
+                self.cols == m.cols and
+                not any(a != b for a,b in zip(self.data, m.data)))
+
+
+    def __matmul__(self, m: 'Matrix') -> 'Matrix':
+        if self.cols != m.rows:
+            raise ValueError(f"Matrix A has dims {self.rows, self.cols} "
+                             f"while Matrix B has dims {m.rows, m.cols}. "
+                             f"Incompatible for multiplication")
+
+        data = [sum(a*b for a,b in zip(row(), col())) for row in self.iterRow() for col in m.iterCol()]
+
+        return Matrix(self.rows, m.cols, data)
 
 
     def display(self, tabspace=3) -> None:
@@ -69,17 +101,16 @@ class Matrix:
 
 
     @classmethod
-    def random(cls, rows: int, cols: int, lower_bound, upper_bound) -> 'Matrix':
+    def random_uni(cls, rows: int, cols: int, lower_bound, upper_bound) -> 'Matrix':
         return cls(rows, cols, [random.uniform(lower_bound, upper_bound) for _ in range(rows * cols)])
 
 
-    @staticmethod
-    def multiply(first: 'Matrix', second: 'Matrix') -> 'Matrix':
-        if first.cols != second.rows:
-            raise ValueError(f"Matrix A has dims {first.rows, first.cols} "
-                             f"while Matrix B has dims {second.rows, second.cols}. "
-                             f"Incompatible for multiplication")
+    @classmethod
+    def random_gauss(cls, rows: int, cols: int) -> 'Matrix':
+        return cls(rows, cols, [random.gauss(mu=0, sigma=0.2) for _ in range(rows * cols)])
+        # These values are ideal for GANs apparently
 
-        array = [sum(a*b for a,b in zip(row(), col())) for row in first.iterRow() for col in second.iterCol()]
 
-        return Matrix(first.rows, second.cols, array)
+
+
+
