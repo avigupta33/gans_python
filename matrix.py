@@ -39,15 +39,19 @@ class Matrix:
             raise ValueError(f"Matrix with {self.cols} does not have col at {col_i}")
         return (self.data[val] for val in range(col_i, self.rows * self.cols, self.cols))
 
-    def iterRow(self) -> Sequence[Sequence[int]]:
-        begin, end = 0, self.cols
-        for row_i in range(self.rows):
-            yield (self.data[val] for val in range(begin, end))
-            begin, end = end, end + self.cols
+    def iterRow(self):
+        def iter(self);
+            begin, end = 0, self.cols
+            for row_i in range(self.rows):
+                yield (self.data[val] for val in range(begin, end))
+                begin, end = end, end + self.cols
+        return iter
 
-    def iterCol(self) -> Sequence[Sequence[int]]:
-        for col_i in range(self.cols):
-            yield (self.data[val] for val in range(col_i, self.rows * self.cols, self.cols))
+    def iterCol(self):
+        def iter(self):
+            for col_i in range(self.cols):
+                yield (self.data[val] for val in range(col_i, self.rows * self.cols, self.cols))
+        return iter
 
     @classmethod
     def zeros(cls, rows, cols):
