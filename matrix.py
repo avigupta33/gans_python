@@ -2,7 +2,7 @@ from typing import *
 import random
 
 T = Any # matrix type
-VectorGenerator = Generator[T, None, None]
+VectorIter = Iterator[T]
 
 class Matrix:
 
@@ -34,24 +34,26 @@ class Matrix:
         print('\n'.join('\t'.join(str(x) for x in row()).expandtabs(tabspace) for row in self.iterRow()))
 
 
-    def getRow(self, row_i: int) -> VectorGenerator:
+    def getRow(self, row_i: int) -> VectorIter:
         if row_i >= self.rows or row_i < 0:
             raise ValueError(f"Matrix with {self.rows} does not have row at {row_i}")
         return (self.data[x] for x in range(row_i * self.cols, (row_i + 1) * self.cols))
 
 
-    def getCol(self, col_i: int) -> VectorGenerator:
+    def getCol(self, col_i: int) -> VectorIter:
         if col_i >= self.cols or col_i <0:
             raise ValueError(f"Matrix with {self.cols} does not have col at {col_i}")
         return (self.data[x] for x in range(col_i, self.rows * self.cols, self.cols))
 
 
-    def iterRow(self) -> Iterator[Callable[[], VectorGenerator]]:
+    def iterRow(self) -> Generator[Callable[[], VectorIter], None, None]:
+        '''Generates VectorIter factory objects for rows'''
         for row_i in range(self.rows):
             yield lambda: (self.data[x] for x in range(row_i * self.cols, (row_i + 1) * self.cols))
 
 
-    def iterCol(self) -> Iterator[Callable[[], VectorGenerator]]:
+    def iterCol(self) -> Generator[Callable[[], VectorIter], None, None]:
+        '''Generates VectorIter factory objects for cols'''
         for col_i in range(self.cols):
             yield lambda: (self.data[x] for x in range(col_i, self.rows*self.cols, self.cols))
 
