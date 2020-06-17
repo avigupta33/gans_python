@@ -71,6 +71,12 @@ class Matrix:
         return Matrix(self.rows, m.cols, data)
 
 
+    @property
+    def t(self):
+        #TODO add transposition
+        pass
+
+
     def display(self, tabspace=3) -> None:
         print('\n'.join('\t'.join(str(x) for x in row()).expandtabs(tabspace) for row in self.iterRow()))
 
