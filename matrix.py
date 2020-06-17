@@ -39,6 +39,17 @@ class Matrix:
 
         return Matrix(self.rows, self.cols, array)
 
+    def __matmul__(self, m: 'Matrix')-> 'Matrix':
+        if self.cols != m.rows:
+            raise ValueError(f"Matrix A has dims {self.rows, self.cols} "
+                             f"while Matrix B has dims {second.rows, second.cols}. "
+                             f"Incompatible for multiplication")
+
+        array = [sum(a*b for a,b in zip(row(), col())) for row in self.iterRow() for col in m.iterCol()]
+
+        return Matrix(self.rows, m.cols, array)
+
+
     def display(self, tabspace=3) -> None:
         print('\n'.join('\t'.join(str(x) for x in row()).expandtabs(tabspace) for row in self.iterRow()))
 
@@ -86,16 +97,6 @@ class Matrix:
         return cls(rows, cols, [random.gauss(mu = 0, sigma = 0.2) for _ in range(rows * cols)])
     #these values are ideal for GANs apparently
 
-    @staticmethod
-    def multiply(first: 'Matrix', second: 'Matrix') -> 'Matrix':
-        if first.cols != second.rows:
-            raise ValueError(f"Matrix A has dims {first.rows, first.cols} "
-                             f"while Matrix B has dims {second.rows, second.cols}. "
-                             f"Incompatible for multiplication")
-
-        array = [sum(a*b for a,b in zip(row(), col())) for row in first.iterRow() for col in second.iterCol()]
-
-        return Matrix(first.rows, second.cols, array)
 
 
 

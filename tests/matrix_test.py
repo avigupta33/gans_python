@@ -20,7 +20,7 @@ def testMatMul1() -> bool:
     mat1 = Matrix.const(rows=4, cols=6, val=3)
     mat2 = Matrix.const(rows=6, cols=5, val=4)
     expected = Matrix.const(rows=4, cols=5, val=72)
-    received = Matrix.multiply(mat1, mat2)
+    received = mat1 @ mat2
     return equals(expected, received)
 
 
@@ -35,7 +35,7 @@ def testMatMul2() -> bool:
         66,81,96,
         102,126,150
     ])
-    received = Matrix.multiply(mat, mat)
+    received = mat @ mat
     return equals(expected, received)
 
 def testMatAdd1() -> bool:
