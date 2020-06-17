@@ -38,11 +38,26 @@ def testMatMul2() -> bool:
     received = Matrix.multiply(mat, mat)
     return equals(expected, received)
 
+def testMatAdd1() -> bool:
+    mat = Matrix(3, 3, [
+        1, 2, 3,
+        4, 5, 6,
+        7, 8, 9
+    ])
+    expected = Matrix(3, 3, [
+        2, 4, 6,
+        8, 10, 12,
+        14, 16, 18
+    ])
+    received = mat + mat
+    return equals(expected, received)
+
 
 if __name__  ==  "__main__":
     runTests("Matrix tests", [
         testZeros,
         testConst,
         testMatMul1,
-        testMatMul2
+        testMatMul2,
+        testMatAdd1
     ])

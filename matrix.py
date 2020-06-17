@@ -29,6 +29,15 @@ class Matrix:
         row, col = key
         self.data[row * self.cols + col] = value
 
+    def __add__(self, m: 'Matrix') -> 'Matrix':
+        if self.cols != m.cols or self.rows != m.rows:
+            raise ValueError(f"Matrix A has dims {self.rows, self.cols} "
+                             f"while Matrix B has dims {m.rows, m.cols}. "
+                             f"Incompatible for addition")
+
+        array = [a + b for a, b in zip(self.data, m.data)]
+
+        return Matrix(self.rows, self.cols, array)
 
     def display(self, tabspace=3) -> None:
         print('\n'.join('\t'.join(str(x) for x in row()).expandtabs(tabspace) for row in self.iterRow()))
@@ -69,9 +78,13 @@ class Matrix:
 
 
     @classmethod
-    def random(cls, rows: int, cols: int, lower_bound, upper_bound) -> 'Matrix':
+    def random_uni(cls, rows: int, cols: int, lower_bound, upper_bound) -> 'Matrix':
         return cls(rows, cols, [random.uniform(lower_bound, upper_bound) for _ in range(rows * cols)])
 
+    @classmethod
+    def random_gauss(cls, rows: int, cols: int) -> 'Matrix':
+        return cls(rows, cols, [random.gauss(mu = 0, sigma = 0.2) for _ in range(rows * cols)])
+    #these values are ideal for GANs apparently
 
     @staticmethod
     def multiply(first: 'Matrix', second: 'Matrix') -> 'Matrix':
@@ -83,3 +96,6 @@ class Matrix:
         array = [sum(a*b for a,b in zip(row(), col())) for row in first.iterRow() for col in second.iterCol()]
 
         return Matrix(first.rows, second.cols, array)
+
+
+
