@@ -87,6 +87,17 @@ class ActivationLayer(Layer):
             return 0 if output_grad <= 0 else 1
 
 
+    class LeakyReLU(Activator):
+
+        @staticmethod
+        def forwards(input_scalar: T) -> T:
+            return 0.01*input_scalar if input_scalar <= 0 else input_scalar
+
+        @staticmethod
+        def backwards(output_grad: T) -> T:
+            return 0.01 if output_grad <= 0 else 1
+
+
     class TanH(Activator):
 
         @staticmethod
