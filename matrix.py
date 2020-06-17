@@ -48,8 +48,8 @@ class Matrix:
 
     def iterRow(self) -> Generator[Callable[[], VectorIter], None, None]:
         '''Generates VectorIter factory objects for rows'''
-        for row_i in range(self.rows):
-            yield lambda: (self.data[x] for x in range(row_i * self.cols, (row_i + 1) * self.cols))
+        for row_begin in range(0, self.rows, self.cols):
+            yield lambda: (self.data[x] for x in range(row_begin, row_begin + self.cols))
 
 
     def iterCol(self) -> Generator[Callable[[], VectorIter], None, None]:
@@ -70,7 +70,7 @@ class Matrix:
 
     @classmethod
     def random(cls, rows: int, cols: int, lower_bound, upper_bound) -> 'Matrix':
-        return cls([random.uniform(lower_bound, upper_bound) for _ in range(rows * cols)])
+        return cls(rows, cols, [random.uniform(lower_bound, upper_bound) for _ in range(rows * cols)])
 
 
     @staticmethod
