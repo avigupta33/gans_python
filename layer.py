@@ -84,7 +84,7 @@ class ActivationLayer(Layer):
 
         @staticmethod
         def backwards(output_grad: T) -> T:
-            raise NotImplementedError
+            return 0 if output_grad <= 0 else 1
 
 
     class TanH(Activator):
@@ -95,7 +95,7 @@ class ActivationLayer(Layer):
 
         @staticmethod
         def backwards(output_grad: T) -> T:
-            raise NotImplementedError
+            return 1 - (math.tanh(output_grad)) ** 2
 
 
 # Example: 
