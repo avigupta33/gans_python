@@ -1,3 +1,8 @@
+
+'''
+Unit testing framework
+'''
+
 from typing import *
 
 # Allow for importation of modules from parent folders
@@ -6,7 +11,6 @@ current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfra
 parent_dir = os.path.dirname(current_dir)
 sys.path.insert(0, parent_dir)
 
-# A unit testing framework 
 
 def runTests(title: str, tests: List[Callable[[], bool]]) -> None:
     '''Evaluate test cases and print results'''
@@ -21,3 +25,18 @@ def runTests(title: str, tests: List[Callable[[], bool]]) -> None:
         except Exception as e:
             print(f"Uncaught exception on {test.__name__}: {e}")
     print(f"{title} passed {num_passed}/{len(tests)} cases")
+
+
+def raises(func: Callable[[], Any], err_type: Exception, message: str) -> bool:
+    '''Determine if a function raises a specific exception'''
+    try:
+        func()
+        # Expected an exception but none were raised
+        return False
+    except err_type as e:
+        if str(e) == message:
+            # Expected exception was raised
+            return True
+        # Exception message doesn't match
+        raise e
+    # Exception of unexpected type is raised

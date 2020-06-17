@@ -1,3 +1,8 @@
+
+'''
+Layer class for neural networks
+'''
+
 from matrix import Matrix
 from typing import *
 

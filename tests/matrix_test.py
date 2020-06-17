@@ -1,3 +1,8 @@
+
+'''
+Matrix testing script
+'''
+
 from unit_tester import *
 from matrix import *
 
@@ -11,10 +16,11 @@ def testConst() -> bool:
 
 
 def testConstNegDimFail1() -> bool:
-    try:
-        Matrix.const(-1, 3, 4)
-    except ValueError as e:
-        return str(e) == "Rows must be positive, is -1"
+    return raises(
+        lambda: Matrix.const(rows=-1, cols=3, val=4),
+        ValueError,
+        "Rows must be positive, is -1"
+    )
 
 
 def testMatMul1() -> bool:
@@ -39,14 +45,15 @@ def testMatMul2() -> bool:
     received = mat @ mat
     return expected == received
 
+
 def testMatMulFail1() -> bool:
     mat1 = Matrix.const(rows=4, cols=6, val=3)
     mat2 = Matrix.const(rows=6, cols=5, val=4)
-    try:
-        mat2 @ mat1
-        return False
-    except ValueError as e:
-        return str(e) == "Matrix A has dims (6, 5) while Matrix B has dims (4, 6). Incompatible for multiplication"
+    return raises(
+        lambda: mat2 @ mat1, 
+        ValueError, 
+        "Matrix A has dims (6, 5) while Matrix B has dims (4, 6). Incompatible for multiplication"
+    )
 
 
 def testMatAdd1() -> bool:
@@ -67,10 +74,11 @@ def testMatAdd1() -> bool:
 def testMatAddFail1() -> bool:
     mat1 = Matrix.const(rows=4, cols=6, val=3)
     mat2 = Matrix.const(rows=6, cols=5, val=4)
-    try:
-        mat1 + mat2
-    except ValueError as e:
-        return str(e) == "Matrix A has dims (4, 6) while Matrix B has dims (6, 5). Incompatible for addition"
+    return raises(
+        lambda: mat1 + mat2,
+        ValueError,
+        "Matrix A has dims (4, 6) while Matrix B has dims (6, 5). Incompatible for addition"
+    )
 
 if __name__  ==  "__main__":
     runTests("Matrix tests", [

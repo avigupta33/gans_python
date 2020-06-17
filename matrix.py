@@ -1,3 +1,8 @@
+
+'''
+Matrix class for neural networks
+'''
+
 from typing import *
 import random
 
