@@ -44,6 +44,15 @@ class Matrix:
         data = [a+b for a,b in zip(self.data, m.data)]
         return Matrix(self.rows, self.cols, data)
 
+    def __sub__(self, m: 'Matrix') -> 'Matrix':
+        if self.cols != m.cols or self.rows != m.rows:
+            raise ValueError(f"Matrix A has dims {self.rows, self.cols} "
+                             f"while Matrix B has dims {m.rows, m.cols}. "
+                             f"Incompatible for addition")
+
+        data = [a-b for a,b in zip(self.data, m.data)]
+        return Matrix(self.rows, self.cols, data)
+
 
     def __eq__(self, m: 'Matrix') -> bool:
         return (self.rows == m.rows and
