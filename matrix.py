@@ -29,15 +29,22 @@ class Matrix:
         row, col = key
         self.data[row * self.cols + col] = value
 
+
     def __add__(self, m: 'Matrix') -> 'Matrix':
         if self.cols != m.cols or self.rows != m.rows:
             raise ValueError(f"Matrix A has dims {self.rows, self.cols} "
                              f"while Matrix B has dims {m.rows, m.cols}. "
                              f"Incompatible for addition")
 
-        array = [a + b for a, b in zip(self.data, m.data)]
+        data = [a+b for a,b in zip(self.data, m.data)]
+        return Matrix(self.rows, self.cols, data)
 
-        return Matrix(self.rows, self.cols, array)
+
+    def __eq__(self, m: 'Matrix') -> bool:
+        return (self.rows == m.rows and
+                self.cols == m.cols and
+                not any(a != b for a,b in zip(self.data, m.data)))
+
 
     def display(self, tabspace=3) -> None:
         print('\n'.join('\t'.join(str(x) for x in row()).expandtabs(tabspace) for row in self.iterRow()))
@@ -93,9 +100,9 @@ class Matrix:
                              f"while Matrix B has dims {second.rows, second.cols}. "
                              f"Incompatible for multiplication")
 
-        array = [sum(a*b for a,b in zip(row(), col())) for row in first.iterRow() for col in second.iterCol()]
+        data = [sum(a*b for a,b in zip(row(), col())) for row in first.iterRow() for col in second.iterCol()]
 
-        return Matrix(first.rows, second.cols, array)
+        return Matrix(first.rows, second.cols, data)
 
 
 
