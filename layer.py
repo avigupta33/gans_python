@@ -43,8 +43,10 @@ class FCLayer(Layer):
 class ActivationLayer(Layer):
 
     def __init__(self, activator: str) -> None:
+        if activator in ('forwards', 'backwards'):
+            raise ValueError(f"Illegal activator name received: {activator}")
         if not hasattr(ActivationLayer, activator):
-            raise AttributeError(f"ActivationLayer has no {activator} activator")
+            raise ValueError(f"ActivationLayer has no {activator} activator")
         self.activator: ClassVar['Activator'] = getattr(ActivationLayer, activator)
 
 
