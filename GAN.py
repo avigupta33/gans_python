@@ -20,17 +20,20 @@ class GAN:
 
                 discrim_products = dis.propagate(training_sample)
 
-                dis_grad = 0
+                dis_error = 0
                 for i in range(m):
-                    dis_grad += math.log(discrim_products[i]) + \
+                    dis_error += math.log(discrim_products[i]) + \
                                 math.log(1-dis.propagate(gen.propagate(noise[i])))
 
+                dis_grad = dis.get_gradient(dis_error)
                 self.dis_optimizer.step(dis_grad)
 
             noise_sample = noise.sample(m)
-            gen_grad = 0
+            gen_error = 0
             for i in range(m):
-                gen_grad += math.log(1 - dis.propagate(gen.propagate(noise_sample[i])) )
+                gen_error += math.log(1 - dis.propagate(gen.propagate(noise_sample[i])))
+
+            gen_grad = gen.get_gradient(gen_error)
             self.gen_optimizer.step(gen_grad)
 
 
