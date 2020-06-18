@@ -23,11 +23,11 @@ def testLenDataFail2() -> bool:
 
 
 def testZeros() -> bool:
-    return not any(x != 0 for x in Matrix.zeros(3,3)._data)
+    return not any(x != 0 for x in Matrix.zeros(3,3).unordered_data)
 
 
 def testConst() -> bool:
-    return not any(x != 5 for x in Matrix.const(3,3,5)._data)
+    return not any(x != 5 for x in Matrix.const(3,3,5).unordered_data)
 
 
 def testConstNegDimFail1() -> bool:
@@ -145,7 +145,7 @@ def testDataProperty() -> bool:
         4,5,6,
         7,8,9
     ])
-    return not any(a!=b for a,b in zip(mat.data, mat._data))
+    return not any(a!=b for a,b in zip(mat.data, mat.unordered_data))
 
 
 def testManyIterRowCalls() -> bool:

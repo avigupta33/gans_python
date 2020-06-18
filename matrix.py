@@ -8,7 +8,7 @@ T = TypeVar('T')
 
 class Matrix:
 
-    def __init__(self, rows: int, cols: int, data: List[T]) -> None:
+    def __init__(self, rows: int=1, cols: int=1, data: List[T]=[0]) -> None:
 
         # Assert rows and cols are valid
         if rows <= 0:
@@ -23,15 +23,15 @@ class Matrix:
         if len(data) != len(self):
             raise ValueError(f"Expected {len(self)} elements, but "
                              f"received {len(data)} elements")
-        self._data: List[T] = data
+        self.unordered_data: List[T] = data
 
         def iterRow() -> Iterator[Callable[[], Iterable[T]]]:
             for row_begin in range(0, self.rows*self.cols, self.cols):
-                yield lambda: (self._data[x] for x in range(row_begin, row_begin + self.cols))
+                yield lambda: (self.unordered_data[x] for x in range(row_begin, row_begin + self.cols))
 
         def iterCol() -> Iterator[Callable[[], Iterable[T]]]:
             for col_i in range(self.cols):
-                yield lambda: (self._data[x] for x in range(col_i, self.rows*self.cols, self.cols))
+                yield lambda: (self.unordered_data[x] for x in range(col_i, self.rows*self.cols, self.cols))
 
         self.iterRow = iterRow
         self.iterCol = iterCol
@@ -80,27 +80,34 @@ class Matrix:
 
     @property
     def t(self) -> 'Matrix':
-        trans = Matrix(rows=self.cols, cols=self.rows, data=self._data)
+        trans = Matrix(rows=self.cols, cols=self.rows, data=self.unordered_data)
         trans.iterRow, trans.iterCol = self.iterCol, self.iterRow
         return trans
 
 
-    def display(self, tabspace: int=3) -> None:
-        print('\n'.join('\t'.join(str(x) for x in row()).expandtabs(tabspace) for row in self.iterRow()))
+    def display(self, tabspace: int=4, decimals: int=3) -> None:
+        print(
+            '\n'.join(
+                '\t'.join(
+                    str(round(x, decimals)) 
+                for x in row())
+                .expandtabs(tabspace) 
+            for row in self.iterRow())
+        )
 
 
     @classmethod
-    def zeros(cls, rows: int, cols: int) -> 'Matrix':
+    def zeros(cls, rows: int=1, cols: int=1) -> 'Matrix':
         return cls.const(rows, cols, 0)
 
 
     @classmethod
-    def const(cls, rows: int, cols: int, val: T) -> 'Matrix':
+    def const(cls, rows: int=1, cols: int=1, val: T=0) -> 'Matrix':
         return cls(rows, cols, [val for _ in range(rows * cols)])
 
 
     @classmethod
-    def generate(cls, rows: int, cols: int, generator: Callable[[], T]) -> 'Matrix':
+    def generate(cls, rows: int=1, cols: int=1, generator: Callable[[], T]=lambda: 0) -> 'Matrix':
         return cls(rows, cols, [generator() for _ in range(rows * cols)])
 
     
