@@ -57,12 +57,12 @@ def testMatMulFail1() -> bool:
 
 
 def testMatAdd1() -> bool:
-    mat = Matrix(3, 3, [
+    mat = Matrix(3,3,[
         1, 2, 3,
         4, 5, 6,
         7, 8, 9
     ])
-    expected = Matrix(3, 3, [
+    expected = Matrix(3,3,[
         2, 4, 6,
         8, 10, 12,
         14, 16, 18
@@ -80,6 +80,22 @@ def testMatAddFail1() -> bool:
         "Matrix A has dims (4, 6) while Matrix B has dims (6, 5). Incompatible for addition"
     )
 
+
+def testTranspose1() -> bool:
+    mat = Matrix(3,3,[
+        1,2,3,
+        4,5,6,
+        7,8,9
+    ])
+    expected = Matrix(3,3,[
+        1,4,7,
+        2,5,8,
+        3,6,9
+    ])
+    received = mat.t
+    return expected == received
+
+
 if __name__  ==  "__main__":
     runTests("Matrix tests", [
         testZeros,
@@ -89,5 +105,6 @@ if __name__  ==  "__main__":
         testMatMul2,
         testMatMulFail1,
         testMatAdd1,
-        testMatAddFail1
+        testMatAddFail1,
+        testTranspose1
     ])

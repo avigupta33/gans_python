@@ -8,6 +8,7 @@ import random
 
 T = Any # Matrix type
 VectorIter = Iterator[T]
+Vector = 'Matrix' # 1D matrix
 
 class Matrix:
 
@@ -18,21 +19,30 @@ class Matrix:
             raise ValueError(f"Cols must be positive, is {cols}")
         self.rows: ClassVar[int] = rows
         self.cols: ClassVar[int] = cols
-        self.data: ClassVar[List[T]] = data
+        self._data: ClassVar[List[T]] = data
+
+        def rowFactory() -> Callable[[], Generator[Callable[[], Iterator[T]], None, None]]:
+            def fresh():
+                for row_begin in range(0, self.rows*self.cols, self.cols):
+                    yield lambda: (self._data[x] for x in range(row_begin, row_begin + self.cols))
+            return fresh
+
+        def colFactory() -> Callable[[], Generator[Callable[[], Iterator[T]], None, None]]:
+            def fresh():
+                for col_i in range(self.cols):
+                    yield lambda: (self._data[x] for x in range(col_i, self.rows*self.cols, self.cols))
+            return fresh
+
+        self.iterRow = rowFactory()
+        self.iterCol = colFactory()
 
 
     def __repr__(self) -> str:
         return f"Matrix with {self.rows} rows and {self.cols} cols"
 
 
-    def __getitem__(self, key: Tuple[int, int]) -> T:
-        row, col = key
-        return self.data[row * self.cols + col]
-
-
-    def __setitem__(self, key: Tuple[int, int], value: T) -> None:
-        row, col = key
-        self.data[row * self.cols + col] = value
+    def __len__(self) -> int:
+        return self.rows * self.cols
 
 
     def __add__(self, m: 'Matrix') -> 'Matrix':
@@ -43,6 +53,7 @@ class Matrix:
 
         data = [a+b for a,b in zip(self.data, m.data)]
         return Matrix(self.rows, self.cols, data)
+
 
     def __sub__(self, m: 'Matrix') -> 'Matrix':
         if self.cols != m.cols or self.rows != m.rows:
@@ -67,42 +78,30 @@ class Matrix:
                              f"Incompatible for multiplication")
 
         data = [sum(a*b for a,b in zip(row(), col())) for row in self.iterRow() for col in m.iterCol()]
-
         return Matrix(self.rows, m.cols, data)
 
 
     @property
-    def t(self):
-        #TODO add transposition
-        pass
+    def data(self) -> Generator[T, None, None]:
+        return (x for row in self.iterRow() for x in row())
+
+
+    @property
+    def t(self) -> 'Matrix':
+        trans = Matrix(rows=self.cols, cols=self.rows, data=self.data)
+        trans.iterRow, trans.iterCol = self.iterCol, self.iterRow
+        return trans
 
 
     def display(self, tabspace=3) -> None:
         print('\n'.join('\t'.join(str(x) for x in row()).expandtabs(tabspace) for row in self.iterRow()))
 
 
-    def getRow(self, row_i: int) -> VectorIter:
-        if row_i >= self.rows or row_i < 0:
-            raise ValueError(f"Matrix with {self.rows} does not have row at {row_i}")
-        return (self.data[x] for x in range(row_i * self.cols, (row_i + 1) * self.cols))
-
-
-    def getCol(self, col_i: int) -> VectorIter:
-        if col_i >= self.cols or col_i <0:
-            raise ValueError(f"Matrix with {self.cols} does not have col at {col_i}")
-        return (self.data[x] for x in range(col_i, self.rows * self.cols, self.cols))
-
-
-    def iterRow(self) -> Generator[Callable[[], VectorIter], None, None]:
-        '''Generates VectorIter factory objects for rows'''
-        for row_begin in range(0, self.rows*self.cols, self.cols):
-            yield lambda: (self.data[x] for x in range(row_begin, row_begin + self.cols))
-
-
-    def iterCol(self) -> Generator[Callable[[], VectorIter], None, None]:
-        '''Generates VectorIter factory objects for cols'''
-        for col_i in range(self.cols):
-            yield lambda: (self.data[x] for x in range(col_i, self.rows*self.cols, self.cols))
+    def sample(self, num_samples: int) -> 'Matrix':
+        if num_samples > len(self):
+            raise ValueError(f"Requested {num_samples} samples, "
+                             f"only {len(self)} available")
+        return Matrix(rows=num_samples, cols=1, data=random.sample(self._data, num_samples))
 
 
     @classmethod
@@ -124,7 +123,6 @@ class Matrix:
     def random_gauss(cls, rows: int, cols: int) -> 'Matrix':
         return cls(rows, cols, [random.gauss(mu=0, sigma=0.2) for _ in range(rows * cols)])
         # These values are ideal for GANs apparently
-
 
 
 
