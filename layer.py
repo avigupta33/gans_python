@@ -2,7 +2,8 @@
 Layer class for neural networks
 '''
 from gans_types import *
-from matrix import Matrix
+from matrix import Matrix, Vector
+from typing import *
 import matrix_random as randm
 import math
 
@@ -23,8 +24,8 @@ class Layer:
     @staticmethod
     def vectorize(func: Mapping) -> VectorMapping:
         '''Only works on column vectors for speed purposes'''
-        return (lambda vector, *argv: 
-            Vector(rows=vector.rows, 
+        return (lambda vector, *argv:
+            Vector(rows=vector.rows,
                    data=[func(x, *argv) for x in vector.unordered_data]
             )
         )
@@ -73,7 +74,7 @@ class FCLayer(Layer):
 
         @staticmethod
         def forwards(input_scalar: T) -> T:
-            return 0 if input_scalar < 0 else input_scalar
+            return 0 if input_scalar <= 0 else input_scalar
 
 
         @staticmethod
