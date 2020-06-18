@@ -2,13 +2,13 @@ from optimizer import AdamOptimizer
 import math
 
 class GAN:
-    def __init__(self, gen_optimizer, optimizer_type):
+    def __init__(self, optimizer_type):
         self.gen = Network
         self.dis = Network
         self.noise = noise
         self.training_data = training_data
-        self.gen_optimizer = gen_optimizer
-        self.dis_optimizer = dis_optimizer
+        self.gen_optimizer = Optimizer(network, optimizer_type)
+        self.dis_optimizer = Optimizer(network, optimizer_type)
 
 
     #https://arxiv.org/pdf/1406.2661.pdf
