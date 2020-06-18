@@ -4,11 +4,11 @@ Matrix random generator methods
 from gans_types import *
 import random
 
-def uniform(rows: int, cols: int, lower_bound: float, upper_bound: float) -> Matrix:
+def uniform(rows: int=1, cols: int=1, lower_bound: float=0., upper_bound: float=1.) -> Matrix:
     return Matrix.generate(rows, cols, lambda: random.uniform(lower_bound, upper_bound))
 
 
-def gauss(rows: int, cols: int, mu: float=0., sigma: float=0.2) -> Matrix:
+def gauss(rows: int=1, cols: int=1, mu: float=0., sigma: float=0.2) -> Matrix:
     return Matrix.generate(rows, cols, lambda: random.gauss(mu, sigma))
 
 

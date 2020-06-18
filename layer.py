@@ -20,6 +20,16 @@ class Layer:
         raise NotImplementedError
 
 
+    @staticmethod
+    def vectorize(func: Mapping) -> VectorMapping:
+        '''Only works on column vectors for speed purposes'''
+        return (lambda vector, *argv: 
+            Vector(rows=vector.rows, 
+                   data=[func(x, *argv) for x in vector.unordered_data]
+            )
+        )
+
+
 class FCLayer(Layer):
 
     class Activator:
@@ -43,30 +53,20 @@ class FCLayer(Layer):
         if activator not in (sub.__name__ for sub in FCLayer.Activator.__subclasses__()):
             raise ValueError(f"Activator '{activator}' doesn't exist")
         activator = getattr(FCLayer, activator)
-        self.activate: VectorMapping = FCLayer.vectorize(activator.forwards)
-        self.deactivate: VectorMapping = FCLayer.vectorize(activator.backwards)
+        self.activate: VectorMapping = Layer.vectorize(activator.forwards)
+        self.deactivate: VectorMapping = Layer.vectorize(activator.backwards)
 
 
     def forwards(self, input_vector: Vector) -> Vector:
         self.input_vector: Vector = input_vector
         self.pre_activation: Vector = self.weights @ self.input_vector
-        output_data: Vector = self.activate(self.pre_activation)
-        return Vector(rows=self.weights.rows, data=output_data)
+        output_vector: Vector = self.activate(self.pre_activation)
+        return output_vector
 
 
     def backwards(self, output_grad: Vector) -> Vector:
         # need to discuss learning rate & stuff before implementing
         raise NotImplementedError
-
-
-    @staticmethod
-    def vectorize(func: Mapping) -> VectorMapping: # where should this method be?
-        '''Only works on column vectors for speed purposes'''
-        return (lambda vector, *argv: 
-            Vector(rows=vector.rows, 
-                   data=[func(x, *argv) for x in vector.unordered_data]
-            )
-        )
 
 
     class ReLU(Activator):
@@ -104,7 +104,8 @@ class FCLayer(Layer):
 
 
 # Example: 
-x = FCLayer(10, 5, 'LeakyReLU')
-x.weights.display()
-x.activate(Matrix(1,1,[-100])).display()
-# >>> 0
+if __name__ == "__main__":
+    layer = FCLayer(10, 5, 'LeakyReLU')
+    input_vector = randm.uniform(rows=10, lower_bound=-1, upper_bound=1)
+    output_vector = layer.forwards(input_vector)
+    output_vector.display()

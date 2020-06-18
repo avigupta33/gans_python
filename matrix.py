@@ -23,6 +23,7 @@ class Matrix:
         if len(data) != len(self):
             raise ValueError(f"Expected {len(self)} elements, but "
                              f"received {len(data)} elements")
+
         self.unordered_data: List[T] = data
 
         def iterRow() -> Iterator[Callable[[], Iterable[T]]]:
