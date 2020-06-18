@@ -1,63 +1,61 @@
-
 '''
 Matrix class for neural networks
 '''
+from typing import TypeVar, List, Iterator, Iterable, Callable
 
-from typing import *
-import random
-
-T = Any # Matrix type
-VectorIter = Iterator[T]
+# Matrix type
+T = TypeVar('T')
 
 class Matrix:
 
-    def __init__(self, rows: int, cols: int, data: List[T]) -> None:
-        if (rows <= 0):
-            raise ValueError(f"Rows must be positive, is {rows}")
-        if (cols <= 0):
-            raise ValueError(f"Cols must be positive, is {cols}")
-        self.rows: ClassVar[int] = rows
-        self.cols: ClassVar[int] = cols
-        self.data: ClassVar[List[T]] = data
+    def __init__(self, rows: int=1, cols: int=1, data: List[T]=[0]) -> None:
 
-    def __len__(self):
-        if self.rows != 1 and self.cols != 1:
-            raise ValueError(f"Len is supported only for row/col. vectors. "
-                             f"Matrix has dims {self.rows, self.cols}.")
-        else:
-            return min(self.rows, self.cols)
+        # Assert rows and cols are valid
+        if rows <= 0:
+            raise ValueError(f"Rows must be positive, is {rows}")
+        if cols <= 0:
+            raise ValueError(f"Cols must be positive, is {cols}")
+
+        self.rows: int = rows
+        self.cols: int = cols
+
+        # Assert received correct number of elements
+        if len(data) != len(self):
+            raise ValueError(f"Expected {len(self)} elements, but "
+                             f"received {len(data)} elements")
+
+        self.unordered_data: List[T] = data
+
+        def iterRow() -> Iterator[Callable[[], Iterable[T]]]:
+            for row_begin in range(0, self.rows*self.cols, self.cols):
+                yield lambda: (self.unordered_data[x] for x in range(row_begin, row_begin + self.cols))
+
+        def iterCol() -> Iterator[Callable[[], Iterable[T]]]:
+            for col_i in range(self.cols):
+                yield lambda: (self.unordered_data[x] for x in range(col_i, self.rows*self.cols, self.cols))
+
+        self.iterRow = iterRow
+        self.iterCol = iterCol
+
 
     def __repr__(self) -> str:
         return f"Matrix with {self.rows} rows and {self.cols} cols"
 
 
-    def __getitem__(self, key: Tuple[int, int]) -> T:
-        row, col = key
-        return self.data[row * self.cols + col]
-
-
-    def __setitem__(self, key: Tuple[int, int], value: T) -> None:
-        row, col = key
-        self.data[row * self.cols + col] = value
+    def __len__(self) -> int:
+        return self.rows * self.cols
 
 
     def __add__(self, m: 'Matrix') -> 'Matrix':
-        if self.cols != m.cols or self.rows != m.rows:
-            raise ValueError(f"Matrix A has dims {self.rows, self.cols} "
-                             f"while Matrix B has dims {m.rows, m.cols}. "
-                             f"Incompatible for addition")
+        return Matrix.compress(self, m, lambda a,b: a+b)
 
-        data = [a+b for a,b in zip(self.data, m.data)]
-        return Matrix(self.rows, self.cols, data)
 
     def __sub__(self, m: 'Matrix') -> 'Matrix':
-        if self.cols != m.cols or self.rows != m.rows:
-            raise ValueError(f"Matrix A has dims {self.rows, self.cols} "
-                             f"while Matrix B has dims {m.rows, m.cols}. "
-                             f"Incompatible for addition")
+        return Matrix.compress(self, m, lambda a,b: a-b)
 
-        data = [a-b for a,b in zip(self.data, m.data)]
-        return Matrix(self.rows, self.cols, data)
+
+    def __mul__(self, m: 'Matrix') -> 'Matrix':
+        return Matrix.compress(self, m, lambda a,b: a*b)
 
 
     def __eq__(self, m: 'Matrix') -> bool:
@@ -73,69 +71,54 @@ class Matrix:
                              f"Incompatible for multiplication")
 
         data = [sum(a*b for a,b in zip(row(), col())) for row in self.iterRow() for col in m.iterCol()]
-
         return Matrix(self.rows, m.cols, data)
 
 
     @property
-    def t(self):
-        #TODO add transposition
-        pass
+    def data(self) -> Iterable[T]:
+        return (x for row in self.iterRow() for x in row())
 
 
-    def display(self, tabspace=3) -> None:
-        print('\n'.join('\t'.join(str(x) for x in row()).expandtabs(tabspace) for row in self.iterRow()))
+    @property
+    def t(self) -> 'Matrix':
+        trans = Matrix(rows=self.cols, cols=self.rows, data=self.unordered_data)
+        trans.iterRow, trans.iterCol = self.iterCol, self.iterRow
+        return trans
 
 
-    def getRow(self, row_i: int) -> VectorIter:
-        if row_i >= self.rows or row_i < 0:
-            raise ValueError(f"Matrix with {self.rows} does not have row at {row_i}")
-        return (self.data[x] for x in range(row_i * self.cols, (row_i + 1) * self.cols))
-
-
-    def getCol(self, col_i: int) -> VectorIter:
-        if col_i >= self.cols or col_i <0:
-            raise ValueError(f"Matrix with {self.cols} does not have col at {col_i}")
-        return (self.data[x] for x in range(col_i, self.rows * self.cols, self.cols))
-
-
-    def iterRow(self) -> Generator[Callable[[], VectorIter], None, None]:
-        '''Generates VectorIter factory objects for rows'''
-        for row_begin in range(0, self.rows*self.cols, self.cols):
-            yield lambda: (self.data[x] for x in range(row_begin, row_begin + self.cols))
-
-
-    def iterCol(self) -> Generator[Callable[[], VectorIter], None, None]:
-        '''Generates VectorIter factory objects for cols'''
-        for col_i in range(self.cols):
-            yield lambda: (self.data[x] for x in range(col_i, self.rows*self.cols, self.cols))
+    def display(self, tabspace: int=4, decimals: int=3) -> None:
+        print(
+            '\n'.join(
+                '\t'.join(
+                    str(round(x, decimals)) 
+                for x in row())
+                .expandtabs(tabspace) 
+            for row in self.iterRow())
+        )
 
 
     @classmethod
-    def zeros(cls, rows: int, cols: int) -> 'Matrix':
+    def zeros(cls, rows: int=1, cols: int=1) -> 'Matrix':
         return cls.const(rows, cols, 0)
 
 
     @classmethod
-    def const(cls, rows: int, cols: int, val: T) -> 'Matrix':
+    def const(cls, rows: int=1, cols: int=1, val: T=0) -> 'Matrix':
         return cls(rows, cols, [val for _ in range(rows * cols)])
 
 
     @classmethod
-    def random_uni(cls, rows: int, cols: int, lower_bound, upper_bound) -> 'Matrix':
-        return cls(rows, cols, [random.uniform(lower_bound, upper_bound) for _ in range(rows * cols)])
+    def generate(cls, rows: int=1, cols: int=1, generator: Callable[[], T]=lambda: 0) -> 'Matrix':
+        return cls(rows, cols, [generator() for _ in range(rows * cols)])
 
-
+    
     @classmethod
-    def random_gauss(cls, rows: int, cols: int) -> 'Matrix':
-        return cls(rows, cols, [random.gauss(mu=0, sigma=0.2) for _ in range(rows * cols)])
-        # These values are ideal for GANs apparently
+    def compress(cls, mat1: 'Matrix', mat2: 'Matrix', combinator: Callable[[T, T], T]) -> 'Matrix':
+        if mat1.cols != mat2.cols or mat1.rows != mat2.rows:
+            raise ValueError(f"Matrix 1 has dims {mat1.rows, mat1.cols} "
+                             f"while Matrix 2 has dims {mat2.rows, mat2.cols}. "
+                             f"Incompatible for folding")
 
-
-    @classmethod
-    def noise_vector(cls, length: int) -> 'Vector':
-        return cls(length, 1, [random.gauss(mu = 0, sigma=1)])
-
-Vector = Matrix
-
+        data = [combinator(a,b) for a,b in zip(mat1.data, mat2.data)]
+        return Matrix(mat1.rows, mat1.cols, data)
 

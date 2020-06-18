@@ -1,10 +1,10 @@
-
 '''
 Layer class for neural networks
 '''
-
-from matrix import Matrix, Vector, T
+from gans_types import *
+from matrix import Matrix, Vector
 from typing import *
+import matrix_random as randm
 import math
 
 class Layer:
@@ -13,12 +13,22 @@ class Layer:
         raise NotImplementedError
 
 
-    def forwards(self, input_vector: Vector) -> Vector:
+    def forwards(self, inputs: Vector) -> Vector:
         raise NotImplementedError
 
 
-    def backwards(self, output_grad: Vector) -> Vector:
+    def backwards(self, output_grads: Vector) -> Vector:
         raise NotImplementedError
+
+
+    @staticmethod
+    def vectorize(func: Mapping) -> VectorMapping:
+        '''Only works on column vectors for speed purposes'''
+        return (lambda vector, *argv:
+            Vector(rows=vector.rows,
+                   data=[func(x, *argv) for x in vector.unordered_data]
+            )
+        )
 
 
 class FCLayer(Layer):
@@ -38,35 +48,33 @@ class FCLayer(Layer):
 
 
     def __init__(self, num_inputs: int, num_outputs: int, activator: str="ReLU") -> None:
+        self.weights: Matrix = randm.gauss(rows=num_outputs, cols=num_inputs, mu=0., sigma=0.2)
+        self.biases: Vector = Vector.zeros(rows=num_outputs)
 
-        # Initialize weights and biases
-        self.weights: ClassVar[Matrix] = Matrix.random_gauss(rows=num_outputs, cols=num_inputs)
-        self.biases: ClassVar[Vector] = Matrix.zeros(rows=num_outputs, cols=1)
-
-        # Initialize activation function
         if activator not in (sub.__name__ for sub in FCLayer.Activator.__subclasses__()):
             raise ValueError(f"Activator '{activator}' doesn't exist")
-        self.activator: ClassVar[Activator] = getattr(FCLayer, activator)
+        activator = getattr(FCLayer, activator)
+        self.activate: VectorMapping = Layer.vectorize(activator.forwards)
+        self.deactivate: VectorMapping = Layer.vectorize(activator.backwards)
 
 
-    def forwards(self, input_vector: Vector) -> Vector:
-        self.input_vector: ClassVar[Vector] = input_vector
-        self.pre_activate: ClassVar[Vector] = self.weights @ self.input_vector
-        output_data = [self.activator.forwards(x) for x in self.pre_activate.data]
-        return Matrix(self.weights.rows, 1, output_data)
+    def forwards(self, inputs: Vector) -> Vector:
+        self.inputs: Vector = inputs
+        self.post_mapping: Vector = self.weights @ self.inputs
+        outputs: Vector = self.activate(self.post_mapping)
+        return outputs
 
 
-    def backwards(self, output_grad: Vector) -> Vector:
+    def backwards(self, output_grads: Vector) -> Vector:
         # need to discuss learning rate & stuff before implementing
         raise NotImplementedError
-
 
 
     class ReLU(Activator):
 
         @staticmethod
         def forwards(input_scalar: T) -> T:
-            return max(input_scalar, 0)
+            return 0 if input_scalar <= 0 else input_scalar
 
 
         @staticmethod
@@ -78,7 +86,7 @@ class FCLayer(Layer):
 
         @staticmethod
         def forwards(input_scalar: T) -> T:
-            return input_scalar*0.01 if input_scalar <= 0 else input_scalar
+            return input_scalar*0.01 if input_scalar < 0 else input_scalar
 
         @staticmethod
         def backwards(output_grad: T) -> T:
@@ -97,6 +105,8 @@ class FCLayer(Layer):
 
 
 # Example: 
-# x = FCLayer(100, 5, 'LeakyReLU')
-# print(x.activator.forwards(-100))
-# >>> 0
+if __name__ == "__main__":
+    layer = FCLayer(10, 5, 'LeakyReLU')
+    input_vector = randm.uniform(rows=10, lower_bound=-1, upper_bound=1)
+    output_vector = layer.forwards(input_vector)
+    output_vector.display()

@@ -1,4 +1,3 @@
-
 '''
 Unit testing framework
 '''
@@ -12,8 +11,19 @@ parent_dir = os.path.dirname(current_dir)
 sys.path.insert(0, parent_dir)
 
 
+def runTestsFromEnv(title: str, local: Dict[str, Any], prefix: str="test") -> None:
+    '''
+    Evaluates test cases found in the environment 
+    with the given prefix (default="test")
+    '''
+    tests = [local[key] for key in local.keys() if key.startswith(prefix)]
+    runTests(title, tests)
+
+
 def runTests(title: str, tests: List[Callable[[], bool]]) -> None:
-    '''Evaluate test cases and print results'''
+    '''
+    Evaluate test cases and print results
+    '''
     num_passed = 0
     # Has to be expanded to print fails
     for test in tests:
@@ -28,7 +38,9 @@ def runTests(title: str, tests: List[Callable[[], bool]]) -> None:
 
 
 def raises(func: Callable[[], Any], err_type: Exception, message: str) -> bool:
-    '''Determine if a function raises a specific exception'''
+    '''
+    Determine if a function raises a specific exception
+    '''
     try:
         func()
         # Expected an exception but none were raised
@@ -40,3 +52,10 @@ def raises(func: Callable[[], Any], err_type: Exception, message: str) -> bool:
         # Exception message doesn't match
         raise e
     # Exception of unexpected type is raised
+
+
+def isPassing(expected: Any, received: Any) -> bool:
+    '''
+    Syntactic sugar to check equivalency
+    '''
+    return expected == received
