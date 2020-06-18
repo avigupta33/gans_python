@@ -26,7 +26,7 @@ class AdamOptimizer:
         self.v = self.b2 * self.m + (1 - self.b2) * (grad ** 2) #TODO make grad squared
         m_hat = self.m/(1-self.b1)
         v_hat = self.v/(1-self.b2)
-        self.params -= self.alpha * m_hat/(math.sqrt(v_hat) - self.eps)
+        self.params -= self.alpha * m_hat/(math.sqrt(v_hat) + self.eps)
         return self.params
 
 
