@@ -3,12 +3,9 @@
 Layer class for neural networks
 '''
 
-from matrix import Matrix, T
+from matrix import Matrix, Vector, T
 from typing import *
 import math
-
-Vector = Matrix # 1D matrices only
-
 
 class Layer:
 

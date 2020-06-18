@@ -136,7 +136,6 @@ class Matrix:
     def noise_vector(cls, length: int) -> 'Vector':
         return cls(length, 1, [random.gauss(mu = 0, sigma=1)])
 
-
-
+Vector = Matrix
 
 

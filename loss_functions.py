@@ -1,6 +1,5 @@
 import math
-from matrix import Matrix
-Vector = Matrix
+from matrix import Vector
 
 def binary_cross_entropy_loss(labels: Vector, preds: Vector) -> float:
     return -1/len(preds) * sum(y * math.log(p) + (1-y) * math.log(1-p)
