@@ -44,6 +44,15 @@ class Matrix:
         data = [a+b for a,b in zip(self.data, m.data)]
         return Matrix(self.rows, self.cols, data)
 
+    def __sub__(self, m: 'Matrix') -> 'Matrix':
+        if self.cols != m.cols or self.rows != m.rows:
+            raise ValueError(f"Matrix A has dims {self.rows, self.cols} "
+                             f"while Matrix B has dims {m.rows, m.cols}. "
+                             f"Incompatible for addition")
+
+        data = [a-b for a,b in zip(self.data, m.data)]
+        return Matrix(self.rows, self.cols, data)
+
 
     def __eq__(self, m: 'Matrix') -> bool:
         return (self.rows == m.rows and
@@ -60,6 +69,12 @@ class Matrix:
         data = [sum(a*b for a,b in zip(row(), col())) for row in self.iterRow() for col in m.iterCol()]
 
         return Matrix(self.rows, m.cols, data)
+
+
+    @property
+    def t(self):
+        #TODO add transposition
+        pass
 
 
     def display(self, tabspace=3) -> None:
