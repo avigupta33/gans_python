@@ -2,7 +2,7 @@ from optimizer import AdamOptimizer
 import math
 
 class GAN:
-    def __init__(self, optimizer_type):
+    def __init__(self, optimizer_type, training_data):
         self.gen = Network
         self.dis = Network
         self.noise = noise
@@ -12,7 +12,7 @@ class GAN:
 
 
     #https://arxiv.org/pdf/1406.2661.pdf
-    def train(self, iterations: int, k: = 1, m: int = 16):
+    def train(self, iterations: int, k: int = 1, m: int = 16):
         for n in range(iterations):
             for step in range(k):
                 noise_sample = noise.sample(m)
