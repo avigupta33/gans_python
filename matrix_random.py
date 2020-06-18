@@ -1,11 +1,8 @@
-
 '''
 Matrix random generator methods
 '''
-
-from typing import *
+from gans_types import *
 import random
-from matrix import Matrix, Vector
 
 def uniform(rows: int, cols: int, lower_bound: float, upper_bound: float) -> Matrix:
     return Matrix.generate(rows, cols, lambda: random.uniform(lower_bound, upper_bound))

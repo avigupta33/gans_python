@@ -1,37 +1,40 @@
-
 '''
 Matrix class for neural networks
 '''
+from typing import TypeVar, List, Iterator, Iterable, Callable
 
-from typing import *
-
-T = Any # Matrix type
+# Matrix type
+T = TypeVar('T')
 
 class Matrix:
 
     def __init__(self, rows: int, cols: int, data: List[T]) -> None:
+
+        # Assert rows and cols are valid
         if rows <= 0:
             raise ValueError(f"Rows must be positive, is {rows}")
         if cols <= 0:
             raise ValueError(f"Cols must be positive, is {cols}")
-        self.rows: ClassVar[int] = rows
-        self.cols: ClassVar[int] = cols
-        self._data: ClassVar[List[T]] = data
 
-        def rowFactory() -> Callable[[], Generator[Callable[[], Iterator[T]], None, None]]:
-            def fresh():
-                for row_begin in range(0, self.rows*self.cols, self.cols):
-                    yield lambda: (self._data[x] for x in range(row_begin, row_begin + self.cols))
-            return fresh
+        self.rows: int = rows
+        self.cols: int = cols
 
-        def colFactory() -> Callable[[], Generator[Callable[[], Iterator[T]], None, None]]:
-            def fresh():
-                for col_i in range(self.cols):
-                    yield lambda: (self._data[x] for x in range(col_i, self.rows*self.cols, self.cols))
-            return fresh
+        # Assert received correct number of elements
+        if len(data) != len(self):
+            raise ValueError(f"Expected {len(self)} elements, but "
+                             f"received {len(data)} elements")
+        self._data: List[T] = data
 
-        self.iterRow = rowFactory()
-        self.iterCol = colFactory()
+        def iterRow() -> Iterator[Callable[[], Iterable[T]]]:
+            for row_begin in range(0, self.rows*self.cols, self.cols):
+                yield lambda: (self._data[x] for x in range(row_begin, row_begin + self.cols))
+
+        def iterCol() -> Iterator[Callable[[], Iterable[T]]]:
+            for col_i in range(self.cols):
+                yield lambda: (self._data[x] for x in range(col_i, self.rows*self.cols, self.cols))
+
+        self.iterRow = iterRow
+        self.iterCol = iterCol
 
 
     def __repr__(self) -> str:
@@ -71,7 +74,7 @@ class Matrix:
 
 
     @property
-    def data(self) -> Generator[T, None, None]:
+    def data(self) -> Iterable[T]:
         return (x for row in self.iterRow() for x in row())
 
 
@@ -82,7 +85,7 @@ class Matrix:
         return trans
 
 
-    def display(self, tabspace=3) -> None:
+    def display(self, tabspace: int=3) -> None:
         print('\n'.join('\t'.join(str(x) for x in row()).expandtabs(tabspace) for row in self.iterRow()))
 
 
@@ -111,4 +114,3 @@ class Matrix:
         data = [combinator(a,b) for a,b in zip(mat1.data, mat2.data)]
         return Matrix(mat1.rows, mat1.cols, data)
 
-Vector = Matrix # 1D matrix
