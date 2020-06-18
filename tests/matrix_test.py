@@ -77,7 +77,7 @@ def testMatAddFail1() -> bool:
     return raises(
         lambda: mat1 + mat2,
         ValueError,
-        "Matrix A has dims (4, 6) while Matrix B has dims (6, 5). Incompatible for addition"
+        "Matrix 1 has dims (4, 6) while Matrix 2 has dims (6, 5). Incompatible for folding"
     )
 
 
@@ -108,3 +108,15 @@ if __name__  ==  "__main__":
         testMatAddFail1,
         testTranspose1
     ])
+
+'''
+TODO:
+test repr
+test len
+test sub
+test mul
+test t (more)
+    like mat.t.t
+test generate
+test compress
+'''

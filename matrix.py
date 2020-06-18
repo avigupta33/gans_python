@@ -4,18 +4,15 @@ Matrix class for neural networks
 '''
 
 from typing import *
-import random
 
 T = Any # Matrix type
-VectorIter = Iterator[T]
-Vector = 'Matrix' # 1D matrix
 
 class Matrix:
 
     def __init__(self, rows: int, cols: int, data: List[T]) -> None:
-        if (rows <= 0):
+        if rows <= 0:
             raise ValueError(f"Rows must be positive, is {rows}")
-        if (cols <= 0):
+        if cols <= 0:
             raise ValueError(f"Cols must be positive, is {cols}")
         self.rows: ClassVar[int] = rows
         self.cols: ClassVar[int] = cols
@@ -46,23 +43,15 @@ class Matrix:
 
 
     def __add__(self, m: 'Matrix') -> 'Matrix':
-        if self.cols != m.cols or self.rows != m.rows:
-            raise ValueError(f"Matrix A has dims {self.rows, self.cols} "
-                             f"while Matrix B has dims {m.rows, m.cols}. "
-                             f"Incompatible for addition")
-
-        data = [a+b for a,b in zip(self.data, m.data)]
-        return Matrix(self.rows, self.cols, data)
+        return Matrix.compress(self, m, lambda a,b: a+b)
 
 
     def __sub__(self, m: 'Matrix') -> 'Matrix':
-        if self.cols != m.cols or self.rows != m.rows:
-            raise ValueError(f"Matrix A has dims {self.rows, self.cols} "
-                             f"while Matrix B has dims {m.rows, m.cols}. "
-                             f"Incompatible for addition")
+        return Matrix.compress(self, m, lambda a,b: a-b)
 
-        data = [a-b for a,b in zip(self.data, m.data)]
-        return Matrix(self.rows, self.cols, data)
+
+    def __mul__(self, m: 'Matrix') -> 'Matrix':
+        return Matrix.compress(self, m, lambda a,b: a*b)
 
 
     def __eq__(self, m: 'Matrix') -> bool:
@@ -88,20 +77,13 @@ class Matrix:
 
     @property
     def t(self) -> 'Matrix':
-        trans = Matrix(rows=self.cols, cols=self.rows, data=self.data)
+        trans = Matrix(rows=self.cols, cols=self.rows, data=self._data)
         trans.iterRow, trans.iterCol = self.iterCol, self.iterRow
         return trans
 
 
     def display(self, tabspace=3) -> None:
         print('\n'.join('\t'.join(str(x) for x in row()).expandtabs(tabspace) for row in self.iterRow()))
-
-
-    def sample(self, num_samples: int) -> 'Matrix':
-        if num_samples > len(self):
-            raise ValueError(f"Requested {num_samples} samples, "
-                             f"only {len(self)} available")
-        return Matrix(rows=num_samples, cols=1, data=random.sample(self._data, num_samples))
 
 
     @classmethod
@@ -115,15 +97,18 @@ class Matrix:
 
 
     @classmethod
-    def random_uni(cls, rows: int, cols: int, lower_bound, upper_bound) -> 'Matrix':
-        return cls(rows, cols, [random.uniform(lower_bound, upper_bound) for _ in range(rows * cols)])
+    def generate(cls, rows: int, cols: int, generator: Callable[[], T]) -> 'Matrix':
+        return cls(rows, cols, [generator() for _ in range(rows * cols)])
 
-
+    
     @classmethod
-    def random_gauss(cls, rows: int, cols: int) -> 'Matrix':
-        return cls(rows, cols, [random.gauss(mu=0, sigma=0.2) for _ in range(rows * cols)])
-        # These values are ideal for GANs apparently
+    def compress(cls, mat1: 'Matrix', mat2: 'Matrix', combinator: Callable[[T, T], T]) -> 'Matrix':
+        if mat1.cols != mat2.cols or mat1.rows != mat2.rows:
+            raise ValueError(f"Matrix 1 has dims {mat1.rows, mat1.cols} "
+                             f"while Matrix 2 has dims {mat2.rows, mat2.cols}. "
+                             f"Incompatible for folding")
 
+        data = [combinator(a,b) for a,b in zip(mat1.data, mat2.data)]
+        return Matrix(mat1.rows, mat1.cols, data)
 
-
-
+Vector = Matrix # 1D matrix
