@@ -23,7 +23,7 @@ class GAN:
                 dis_error = 0
                 for i in range(m):
                     dis_error += math.log(discrim_products[i]) + \
-                                math.log(1-dis.propagate(gen.propagate(noise[i])))
+                                math.log(1-dis.propagate(gen.propagate(noise_sample[i])))
 
                 dis_grad = dis.get_gradient(dis_error)
                 self.dis_optimizer.step(dis_grad)
