@@ -20,6 +20,12 @@ class Matrix:
         self.cols: ClassVar[int] = cols
         self.data: ClassVar[List[T]] = data
 
+    def __len__(self):
+        if self.rows != 1 and self.cols != 1:
+            raise ValueError(f"Len is supported only for row/col. vectors. "
+                             f"Matrix has dims {self.rows, self.cols}.")
+        else:
+            return min(self.rows, self.cols)
 
     def __repr__(self) -> str:
         return f"Matrix with {self.rows} rows and {self.cols} cols"
@@ -126,6 +132,10 @@ class Matrix:
         # These values are ideal for GANs apparently
 
 
+    @classmethod
+    def noise_vector(cls, length: int) -> 'Vector':
+        return cls(length, 1, [random.gauss(mu = 0, sigma=1)])
 
+Vector = Matrix
 
 
