@@ -12,11 +12,11 @@ class Layer:
         raise NotImplementedError
 
 
-    def forwards(self, input_vector: Vector) -> Vector:
+    def forwards(self, inputs: Vector) -> Vector:
         raise NotImplementedError
 
 
-    def backwards(self, output_grad: Vector) -> Vector:
+    def backwards(self, output_grads: Vector) -> Vector:
         raise NotImplementedError
 
 
@@ -47,7 +47,7 @@ class FCLayer(Layer):
 
 
     def __init__(self, num_inputs: int, num_outputs: int, activator: str="ReLU") -> None:
-        self.weights: Matrix = randm.gauss(rows=num_outputs, cols=num_inputs)
+        self.weights: Matrix = randm.gauss(rows=num_outputs, cols=num_inputs, mu=0., sigma=0.2)
         self.biases: Vector = Vector.zeros(rows=num_outputs)
 
         if activator not in (sub.__name__ for sub in FCLayer.Activator.__subclasses__()):
@@ -57,14 +57,14 @@ class FCLayer(Layer):
         self.deactivate: VectorMapping = Layer.vectorize(activator.backwards)
 
 
-    def forwards(self, input_vector: Vector) -> Vector:
-        self.input_vector: Vector = input_vector
-        self.pre_activation: Vector = self.weights @ self.input_vector
-        output_vector: Vector = self.activate(self.pre_activation)
-        return output_vector
+    def forwards(self, inputs: Vector) -> Vector:
+        self.inputs: Vector = inputs
+        self.post_mapping: Vector = self.weights @ self.inputs
+        outputs: Vector = self.activate(self.post_mapping)
+        return outputs
 
 
-    def backwards(self, output_grad: Vector) -> Vector:
+    def backwards(self, output_grads: Vector) -> Vector:
         # need to discuss learning rate & stuff before implementing
         raise NotImplementedError
 
