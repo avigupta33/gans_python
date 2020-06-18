@@ -20,7 +20,7 @@ class AdamOptimizer:
         self.v = 0
         self.t = 0
 
-    def back_pass(self, grad: Vector ) -> Matrix:
+    def step(self, grad: Vector ) -> Matrix:
         self.t+=1
         self.m = self.b1 * self.m + (1 - self.b1) * grad
         self.v = self.b2 * self.m + (1 - self.b2) * (grad ** 2) #TODO make grad squared
