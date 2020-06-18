@@ -55,7 +55,16 @@ class Matrix:
 
 
     def __mul__(self, m: 'Matrix') -> 'Matrix':
-        return Matrix.compress(self, m, lambda a,b: a*b)
+        if isinstance(m, (float, int)):
+            return Matrix(self.rows, self.cols, [m*data for data in self.data])
+        else:
+            return Matrix.compress(self, m, lambda a,b: a*b)
+
+    def __rmul__(self, m: 'Matrix') -> 'Matrix':
+        if isinstance(m, (float, int)):
+            return Matrix(self.rows, self.cols, [m*data for data in self.data])
+        else:
+            return Matrix.compress(m, self, lambda a,b: a*b)
 
 
     def __eq__(self, m: 'Matrix') -> bool:
