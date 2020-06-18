@@ -24,4 +24,5 @@ def sample(mat: Vector, num_samples: int) -> Vector:
 
 def noise_vector(length: int, mu: float=0., sigma: float=1.) -> Vector:
     # Matrix() raises exception is rows <= 0 so this doesn't have to
-    return Matrix(rows=length, cols=1, data=[random.gauss(mu, sigma) for _ in range(length)])
+    return Matrix.generate(rows=length, cols=1, generator=lambda: random.gauss(mu, sigma))
+
