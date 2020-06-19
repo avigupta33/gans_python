@@ -11,12 +11,25 @@ typedef struct {
 } MatrixObject;
 
 
-static void Matrix_dealloc(MatrixObject *self) {
-    free(self->unordered_data);
-    Py_TYPE(self)->tp_free((PyObject*) self);
+/* PyMethodDef functions */
+static PyObject* Matrix_getRows(MatrixObject *self) {
+    return PyLong_FromLong(self->rows);
 }
 
+static PyObject* Matrix_getCols(MatrixObject *self) {
+    return PyLong_FromLong(self->cols);
+}
 
+static PyMethodDef MatrixMethodsDefs[] = {
+    {"getRows", (PyCFunction) Matrix_getRows, METH_NOARGS,
+     "Get number of rows"},
+    {"getCols", (PyCFunction) Matrix_getCols, METH_NOARGS,
+     "Get number of cols"},
+    {NULL, NULL, 0, NULL}       /* Sentinal */
+};
+
+
+/* PyTypeObject functions */
 static PyObject* Matrix_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
     MatrixObject *self;
     self = (MatrixObject*) type->tp_alloc(type, 0);
@@ -28,7 +41,6 @@ static PyObject* Matrix_new(PyTypeObject *type, PyObject *args, PyObject *kwds) 
     }
     return (PyObject*) self;
 }
-
 
 static int Matrix_init(MatrixObject *self, PyObject *args, PyObject *kwds) {
     static char *kwlist[] = {"rows", "cols", "data", NULL};
@@ -57,63 +69,19 @@ static int Matrix_init(MatrixObject *self, PyObject *args, PyObject *kwds) {
         PyObject *item = PyList_GetItem(data, i);
         if (!PyLong_Check(item)) return -1; // TODO proper error
         self->unordered_data[i] = PyFloat_AsDouble(item);
+        // printf("%f\n", self->unordered_data[i]);
     }
     return 0;
 }
 
+static void Matrix_dealloc(MatrixObject *self) {
+    free(self->unordered_data);
+    Py_TYPE(self)->tp_free((PyObject*) self);
+}
 
 static PyObject* Matrix_repr(MatrixObject *self, PyObject *Py_UNUSED(ignored)) {
     return PyUnicode_FromFormat("Matrix with %d rows and %d cols", self->rows, self->cols);
 }
-
-
-static PyObject* Matrix_getRows(MatrixObject *self, PyObject *Py_UNUSED(ignored)) {
-    return PyLong_FromLong(self->rows);
-}
-
-
-static PyObject* Matrix_getCols(MatrixObject *self, PyObject *Py_UNUSED(ignored)) {
-    return PyLong_FromLong(self->cols);
-}
-
-
-/* Method table */
-static PyMethodDef MatrixMethodsDefs[] = {
-    {"getRows", (PyCFunction) Matrix_getRows, METH_NOARGS,
-     "Get number of rows"},
-    {"getCols", (PyCFunction) Matrix_getCols, METH_NOARGS,
-     "Get number of cols"},
-    {NULL, NULL, 0, NULL}       /* Sentinal */
-};
-
-static PyObject* MatrixNumber_add(MatrixObject *self, PyObject *m) {
-    return Py_BuildValue("s", "Element-wise addition");
-}
-
-
-static PyObject* MatrixNumber_subtract(MatrixObject *self, PyObject *m) {
-    return Py_BuildValue("s", "Element-wise subtraction");
-}
-
-
-static PyObject* MatrixNumber_multiply(MatrixObject *self, PyObject *m) {
-    return Py_BuildValue("s", "Element-wise multiplication");
-}
-
-
-static PyObject* MatrixNumber_matrix_multiply(MatrixObject *self, PyObject *m) {
-    return Py_BuildValue("s", "Matrix multiplication");
-}
-
-
-/* Number methods */
-static PyNumberMethods MatrixNumberMethods = {
-    .nb_add = (binaryfunc) MatrixNumber_add,
-    .nb_subtract = (binaryfunc) MatrixNumber_subtract,
-    .nb_multiply = (binaryfunc) MatrixNumber_multiply,
-    .nb_matrix_multiply = (binaryfunc) MatrixNumber_matrix_multiply,
-};
-
 
 static PyTypeObject MatrixType = {
     PyVarObject_HEAD_INIT(NULL, 0)
@@ -127,7 +95,34 @@ static PyTypeObject MatrixType = {
     .tp_dealloc = (destructor) Matrix_dealloc,
     .tp_methods = MatrixMethodsDefs,
     .tp_repr = (reprfunc) Matrix_repr,
-    .tp_as_number = &MatrixNumberMethods,
+};
+
+
+/* PyNumberMethods functions */
+static PyObject* MatrixNumber_add(MatrixObject *self, PyObject *m) {
+    if (Py_TYPE(m) != &MatrixType) {
+        return Py_BuildValue("s", "chief this is not epic...");
+    }
+    return Py_BuildValue("s", "Element-wise addition");
+}
+
+static PyObject* MatrixNumber_subtract(MatrixObject *self, PyObject *m) {
+    return Py_BuildValue("s", "Element-wise subtraction");
+}
+
+static PyObject* MatrixNumber_multiply(MatrixObject *self, PyObject *m) {
+    return Py_BuildValue("s", "Element-wise multiplication");
+}
+
+static PyObject* MatrixNumber_matrix_multiply(MatrixObject *self, PyObject *m) {
+    return Py_BuildValue("s", "Matrix multiplication");
+}
+
+static PyNumberMethods MatrixNumberMethods = {
+    .nb_add = (binaryfunc) MatrixNumber_add,
+    .nb_subtract = (binaryfunc) MatrixNumber_subtract,
+    .nb_multiply = (binaryfunc) MatrixNumber_multiply,
+    .nb_matrix_multiply = (binaryfunc) MatrixNumber_matrix_multiply,
 };
 
 
@@ -141,6 +136,9 @@ static PyModuleDef MatrixModule = {
 
 
 PyMODINIT_FUNC PyInit_Matrix() {
+    // Any methods that needs to typecheck if something is a MatrixType
+    // needs to be added here (and not in the construction of MatrixType)
+    MatrixType.tp_as_number = &MatrixNumberMethods;
     if (PyType_Ready(&MatrixType) < 0)
         return NULL;
 

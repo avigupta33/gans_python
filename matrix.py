@@ -122,3 +122,8 @@ class Matrix:
         data = [combinator(a,b) for a,b in zip(mat1.data, mat2.data)]
         return Matrix(mat1.rows, mat1.cols, data)
 
+
+if __name__ == "__main__":
+    mat = Matrix(rows=4, cols=3, data=[4 for _ in range(12)])
+    print(mat)
+    mat * "hi"
