@@ -72,7 +72,10 @@ static int Matrix_init(MatrixObject *self, PyObject *args, PyObject *kwds) {
     if (self->rows <= 0 || self->cols <= 0) return -1;
 
     // Check that a list was received
-    if (!PyList_Check(data)) return -1;
+    if (!PyList_Check(data)) {
+        PyErr_Format(PyExc_TypeError, "cannot construct data from object of type '%s'", data->ob_type->tp_name);
+        return -1;
+    }
 
     self->len = PyList_Size(data);
 
@@ -127,10 +130,7 @@ static PyObject* C_Matrix_new(long rows, long  cols, double *unordered_data) {
 }
 
 static PyObject* unsupported_err(PyObject *a, PyObject *b, const char op) {
-    char err_template[] = "unsupported operand type(s) for %c: '%s' and '%s'";
-    char err[sizeof(err_template) + 20];
-    sprintf(err, err_template, op, "a type", "b type"); // TODO: get type names
-    PyErr_SetString(PyExc_TypeError, err);
+    PyErr_Format(PyExc_TypeError, "unsupported operand type(s) for %c: '%s' and '%s'", op, a->ob_type->tp_name, b->ob_type->tp_name);
     return NULL;
 }
 
