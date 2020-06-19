@@ -1,7 +1,9 @@
 
 from Matrix import *
 
-a = Matrix()
+mat = Matrix(cols=3, rows=4, data=[4 for _ in range(12)])
 
+print(mat.name())
+print(mat.getRows())
 
-a.rows = 5
+print("hi im good lol")
