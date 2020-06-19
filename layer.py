@@ -50,6 +50,8 @@ class FCLayer(Layer):
     def __init__(self, num_inputs: int, num_outputs: int, activator: str="ReLU") -> None:
         self.weights: Matrix = randm.gauss(rows=num_outputs, cols=num_inputs, mu=0., sigma=0.2)
         self.biases: Vector = Vector.zeros(rows=num_outputs)
+        self.num_inputs = num_inputs
+        self.num_outputs = num_outputs
 
         if activator not in (sub.__name__ for sub in FCLayer.Activator.__subclasses__()):
             raise ValueError(f"Activator '{activator}' doesn't exist")
@@ -59,16 +61,29 @@ class FCLayer(Layer):
 
 
     def forwards(self, inputs: Vector) -> Vector:
+        if len(inputs) != self.layers[0].num_inputs:
+            raise (
+                ValueError(f"Trying to pass input with length {len(inputs)},"
+                           f" but the this layer has {self.num_inputs}"
+                           f"inputs/")
+            )
         self.inputs: Vector = inputs
         self.post_mapping: Vector = self.weights @ self.inputs
         outputs: Vector = self.activate(self.post_mapping)
         return outputs
 
+    def backwards(self, output_error: Vector) -> Vector:
+        deactivated_output_error = self.deactivate(output_error)
 
-    def backwards(self, output_grads: Vector) -> Vector:
-        # need to discuss learning rate & stuff before implementing
-        raise NotImplementedError
+        err_from_inputs = deactivated_output_error @ self.weights
+        err_from_weights = deactivated_output_error.T @ self.inputs.T
+        err_from_biases = deactivated_output_error
 
+        return err_from_inputs, err_from_weights, err_from_biases
+
+    def update(self, weight_update: Vector, bias_update: Vector) -> None:
+        self.weights -= weight_update
+        self.biases -= bias_update
 
     class ReLU(Activator):
 
@@ -78,8 +93,8 @@ class FCLayer(Layer):
 
 
         @staticmethod
-        def backwards(output_grad: T) -> T:
-            return 0 if output_grad <= 0 else 1
+        def backwards(output_error: T) -> T:
+            return 0 if output_error <= 0 else 1
 
 
     class LeakyReLU(Activator):
@@ -89,8 +104,8 @@ class FCLayer(Layer):
             return input_scalar*0.01 if input_scalar < 0 else input_scalar
 
         @staticmethod
-        def backwards(output_grad: T) -> T:
-            return 0.01 if output_grad <= 0 else 1
+        def backwards(output_error: T) -> T:
+            return 0.01 if output_error <= 0 else 1
 
 
     class TanH(Activator):
@@ -100,8 +115,8 @@ class FCLayer(Layer):
             return math.tanh(input_scalar)
 
         @staticmethod
-        def backwards(output_grad: T) -> T:
-            return 1 - (math.tanh(output_grad)**2)
+        def backwards(output_error: T) -> T:
+            return 1 - (math.tanh(output_error)**2)
 
 
 # Example: 
