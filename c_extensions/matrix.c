@@ -99,10 +99,20 @@ static PyTypeObject MatrixType = {
 
 
 /* PyNumberMethods functions */
-static PyObject* MatrixNumber_add(MatrixObject *self, PyObject *m) {
+
+static int is_matrix_numeric(PyObject *m, char op) {
     if (Py_TYPE(m) != &MatrixType) {
-        return Py_BuildValue("s", "chief this is not epic...");
+        char err_template[] = "unsupported operand type(s) for %c: '%s' and '%s'";
+        char err[sizeof(err_template) + 20];
+        sprintf(err, err_template, op, "Matrix", "a type");
+        PyErr_SetString(PyExc_TypeError, err);
+        return 0;
     }
+    return 1;
+}
+
+static PyObject* MatrixNumber_add(MatrixObject *self, PyObject *m) {
+    if (!is_matrix_numeric(m, '+')) return NULL;
     return Py_BuildValue("s", "Element-wise addition");
 }
 
