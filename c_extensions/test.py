@@ -1,11 +1,14 @@
-from typing import *
 from Matrix import *
 
-mat = Matrix(cols=3, rows=4, data=[4 for _ in range(12)])
+mat1 = Matrix(cols=3, rows=1, data=[1,2,3])
+mat2 = Matrix(cols=3, rows=1, data=[4,5,6])
 
-print(mat)
-print(mat.getRows())
-print(mat * mat)
-double = mat + mat
-print(double)
+print(mat1.getData())
+print(mat2.getData())
+print("Addition:", (mat1 + mat2).getData())
+print("Subtraction:", (mat1 - mat2).getData())
+print("Multiply:", (mat1 * mat2).getData())
 
+
+mine  = (x for x in range(5))
+mine

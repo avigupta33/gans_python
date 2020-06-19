@@ -19,11 +19,24 @@ static PyObject* Matrix_getCols(MatrixObject *self) {
     return PyLong_FromLong(self->cols);
 }
 
+
+static PyObject* Matrix_getData(MatrixObject *self) {
+    PyObject *list = PyList_New(self->len);
+    for (Py_ssize_t i = 0; i < self->len; ++i) {
+        PyObject *item = PyFloat_FromDouble(self->unordered_data[i]);
+        Py_INCREF(item);
+        PyList_SET_ITEM(list, i, item);
+    }
+    return list;
+}
+
 static PyMethodDef MatrixMethodsDefs[] = {
     {"getRows", (PyCFunction) Matrix_getRows, METH_NOARGS,
      "Get number of rows"},
     {"getCols", (PyCFunction) Matrix_getCols, METH_NOARGS,
      "Get number of cols"},
+    {"getData", (PyCFunction) Matrix_getData, METH_NOARGS,
+     "Get list of elements"},
     {NULL, NULL, 0, NULL}       /* Sentinal */
 };
 
