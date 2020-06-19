@@ -73,12 +73,12 @@ class FCLayer(Layer):
         return outputs
 
     def backwards(self, output_error: Vector) -> Vector:
-        self.deactivate(output_error)
+        deactivated_output_error = self.deactivate(output_error)
 
-        err_from_inputs = output_error @ self.weights
-        err_from_weights = output_error.T @ self.inputs.T
+        err_from_inputs = deactivated_output_error @ self.weights
+        err_from_weights = deactivated_output_error.T @ self.inputs.T
 
-        return err_from_inputs, err_from_weights, output_error
+        return err_from_inputs, err_from_weights, deactivated_output_error
 
     class ReLU(Activator):
 
