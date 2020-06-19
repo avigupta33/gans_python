@@ -23,7 +23,7 @@ class Network:
             outputs = self.layers[i].forwards(outputs)
         return outputs
 
-    def backwards(self, err_signals: Vector) -> List[List[Tuple]]:
+    def backwards(self, err_signals: Vector) -> List[Tuple[Vector, Vector]]:
         gradients = []
         for layer in reversed(self.layers):
             err_from_inputs, err_from_weights, err_from_biases = layer.backwards(err_signals)
