@@ -1,6 +1,7 @@
 
 #include <python3.7/Python.h>
 
+
 int seq(int target, int *arr) {
     if (target < 1) return arr[0];
     int sum = arr[0] + arr[1];

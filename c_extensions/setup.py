@@ -1,7 +1,7 @@
 
 from distutils.core import setup, Extension
 
-module = Extension("example", sources=['example_module.c'])
+module = Extension("Matrix", sources=['matrix.c'])
 
 setup(name="PackageName",
       version="1,0",
