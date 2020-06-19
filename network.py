@@ -8,7 +8,7 @@ class Network:
         self.layers = layers
 
     def addLayer(self, l: Layer) -> None:
-        if l.num_inputs != self.layers[-1].num_outputs:
+        if len(self.layers) != 0 and l.num_inputs != self.layers[-1].num_outputs:
             raise(
                 ValueError(f"Trying to add a layer with {l.num_inputs} inputs,"
                            f" but the last layer currently has {self.layers[-1].num_outputs}"
