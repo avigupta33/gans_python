@@ -77,8 +77,13 @@ class FCLayer(Layer):
 
         err_from_inputs = deactivated_output_error @ self.weights
         err_from_weights = deactivated_output_error.T @ self.inputs.T
+        err_from_biases = deactivated_output_error
 
-        return err_from_inputs, err_from_weights, deactivated_output_error
+        return err_from_inputs, err_from_weights, err_from_biases
+
+    def update(self, weight_update: Vector, bias_update: Vector) -> None:
+        self.weights -= weight_update
+        self.biases -= bias_update
 
     class ReLU(Activator):
 
