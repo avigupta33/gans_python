@@ -23,7 +23,15 @@ class Network:
             outputs = self.layers[i].forwards(outputs)
         return outputs
 
-    def backwards(self, cost: Union[float, int]) -> Vector:
+    def backwards(self, err_signals: Vector) -> Vector:
+        gradients = []
+        for i in range(len(self.layers)-1, -1, -1):
+            layer = self.layers[i]
+            err_from_inputs, err_from_weights, err_from_biases = layer.backwards(err_signals)
+            gradients.append((err_from_weights, err_from_biases))
+            err_signals = err_from_inputs
+
+
 
 
 
