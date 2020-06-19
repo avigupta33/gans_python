@@ -3,7 +3,7 @@ from distutils.core import setup, Extension
 
 module = Extension("Matrix", sources=['matrix.c'])
 
-setup(name="PackageName",
+setup(name="Quantum Matrix",
       version="1,0",
-      description="This is a package for example",
+      description="Epic package for matrix operations",
       ext_modules=[module])

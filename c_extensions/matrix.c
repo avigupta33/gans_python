@@ -62,8 +62,8 @@ static int Matrix_init(MatrixObject *self, PyObject *args, PyObject *kwds) {
 }
 
 
-static PyObject* Matrix_name(MatrixObject *self, PyObject *Py_UNUSED(ignored)) {
-    return PyUnicode_FromFormat("Rows: %d, Cols: %d, e: %f  ", self->rows, self->cols, self->unordered_data[0]);
+static PyObject* Matrix_repr(MatrixObject *self, PyObject *Py_UNUSED(ignored)) {
+    return PyUnicode_FromFormat("Matrix with %d rows and %d cols", self->rows, self->cols);
 }
 
 
@@ -78,14 +78,40 @@ static PyObject* Matrix_getCols(MatrixObject *self, PyObject *Py_UNUSED(ignored)
 
 
 /* Method table */
-static PyMethodDef MatrixMethods[] = {
-    {"name", (PyCFunction) Matrix_name, METH_NOARGS,
-     "Return the shape of the matrix"},
+static PyMethodDef MatrixMethodsDefs[] = {
     {"getRows", (PyCFunction) Matrix_getRows, METH_NOARGS,
      "Get number of rows"},
     {"getCols", (PyCFunction) Matrix_getCols, METH_NOARGS,
      "Get number of cols"},
     {NULL, NULL, 0, NULL}       /* Sentinal */
+};
+
+static PyObject* MatrixNumber_add(MatrixObject *self, PyObject *m) {
+    return Py_BuildValue("s", "Element-wise addition");
+}
+
+
+static PyObject* MatrixNumber_subtract(MatrixObject *self, PyObject *m) {
+    return Py_BuildValue("s", "Element-wise subtraction");
+}
+
+
+static PyObject* MatrixNumber_multiply(MatrixObject *self, PyObject *m) {
+    return Py_BuildValue("s", "Element-wise multiplication");
+}
+
+
+static PyObject* MatrixNumber_matrix_multiply(MatrixObject *self, PyObject *m) {
+    return Py_BuildValue("s", "Matrix multiplication");
+}
+
+
+/* Number methods */
+static PyNumberMethods MatrixNumberMethods = {
+    .nb_add = (binaryfunc) MatrixNumber_add,
+    .nb_subtract = (binaryfunc) MatrixNumber_subtract,
+    .nb_multiply = (binaryfunc) MatrixNumber_multiply,
+    .nb_matrix_multiply = (binaryfunc) MatrixNumber_matrix_multiply,
 };
 
 
@@ -99,7 +125,9 @@ static PyTypeObject MatrixType = {
     .tp_new = Matrix_new,
     .tp_init = (initproc) Matrix_init,
     .tp_dealloc = (destructor) Matrix_dealloc,
-    .tp_methods = MatrixMethods
+    .tp_methods = MatrixMethodsDefs,
+    .tp_repr = (reprfunc) Matrix_repr,
+    .tp_as_number = &MatrixNumberMethods,
 };
 
 

@@ -21,6 +21,7 @@ def fibC():
 def fibPy():
     return myFib(100)
 
-num = 1000
-print(timeit.timeit(fibC, number=num))
-print(timeit.timeit(fibPy, number=num))
+if __name__ == "__main__":
+    num = 1000
+    print(timeit.timeit(fibC, number=num))
+    print(timeit.timeit(fibPy, number=num))
