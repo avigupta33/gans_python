@@ -1,7 +1,6 @@
 
 #include <python3.7/Python.h>
 
-
 typedef struct {
     PyObject_HEAD
     long rows;
@@ -31,8 +30,7 @@ static PyMethodDef MatrixMethodsDefs[] = {
 
 /* PyTypeObject functions */
 static PyObject* Matrix_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
-    MatrixObject *self;
-    self = (MatrixObject*) type->tp_alloc(type, 0);
+    MatrixObject *self = (MatrixObject*) type->tp_alloc(type, 0);
     if (self) {
         self->rows = 0;
         self->cols = 0;
@@ -99,29 +97,68 @@ static PyTypeObject MatrixType = {
 
 
 /* PyNumberMethods functions */
+static PyObject* C_Matrix_new(long rows, long  cols, double *unordered_data) {
+    MatrixObject *self = (MatrixObject*) Matrix_new(&MatrixType, NULL, NULL);
+    self->rows = rows;
+    self->cols = cols;
+    self->len = rows * cols;
+    self->unordered_data = unordered_data;
+    return (PyObject*) self;
+}
 
-static int is_matrix_numeric(PyObject *m, char op) {
-    if (Py_TYPE(m) != &MatrixType) {
-        char err_template[] = "unsupported operand type(s) for %c: '%s' and '%s'";
-        char err[sizeof(err_template) + 20];
-        sprintf(err, err_template, op, "Matrix", "a type");
-        PyErr_SetString(PyExc_TypeError, err);
-        return 0;
+static PyObject* unsupported_err(PyObject *a, PyObject *b, const char op) {
+    char err_template[] = "unsupported operand type(s) for %c: '%s' and '%s'";
+    char err[sizeof(err_template) + 20];
+    sprintf(err, err_template, op, "a type", "b type"); // TODO: get type names
+    PyErr_SetString(PyExc_TypeError, err);
+    return NULL;
+}
+
+static PyObject* MatrixNumber_compress(MatrixObject *self, PyObject *o, void(*combinator)(double*, double*, double*)) {
+    if (!PyObject_TypeCheck(o, &MatrixType)) {
+        return unsupported_err((PyObject*) self, o, '+');
     }
-    return 1;
+    MatrixObject *m = (MatrixObject*) o;
+    if (self->rows != m->rows || self->cols != m->cols) {
+        PyErr_SetString(PyExc_ValueError, "Matrices are not the same shape");
+        return NULL;
+    }
+    double *ret_data = (double*) malloc(sizeof(double) * self->len);
+    double *self_ptr = self->unordered_data;
+    double *m_ptr = m->unordered_data;
+    double *ret_ptr = ret_data;
+    if (!ret_data) {
+        PyErr_SetString(PyExc_MemoryError, "Bad alloc");
+        return NULL;
+    }
+    for (Py_ssize_t i = 0; i < self->len; ++i) {
+        combinator(self_ptr++, m_ptr++, ret_ptr++);
+    }
+    return C_Matrix_new(self->rows, self->cols, ret_data);
 }
 
-static PyObject* MatrixNumber_add(MatrixObject *self, PyObject *m) {
-    if (!is_matrix_numeric(m, '+')) return NULL;
-    return Py_BuildValue("s", "Element-wise addition");
+static void MatrixNumber_add_combinator(double *a, double *b, double *res) {
+    *res = *a + *b;
 }
 
-static PyObject* MatrixNumber_subtract(MatrixObject *self, PyObject *m) {
-    return Py_BuildValue("s", "Element-wise subtraction");
+static PyObject* MatrixNumber_add(MatrixObject *self, PyObject *o) {
+    return MatrixNumber_compress(self, o, MatrixNumber_add_combinator);
 }
 
-static PyObject* MatrixNumber_multiply(MatrixObject *self, PyObject *m) {
-    return Py_BuildValue("s", "Element-wise multiplication");
+static void MatrixNumber_subtract_combinator(double *a, double *b, double *res) {
+    *res = *a - *b;
+}
+
+static PyObject* MatrixNumber_subtract(MatrixObject *self, PyObject *o) {
+    return MatrixNumber_compress(self, o, MatrixNumber_subtract_combinator);
+}
+
+static void MatrixNumber_multiply_combinator(double *a, double *b, double *res) {
+    *res = *a * *b;
+}
+
+static PyObject* MatrixNumber_multiply(MatrixObject *self, PyObject *o) {
+    return MatrixNumber_compress(self, o, MatrixNumber_multiply_combinator);
 }
 
 static PyObject* MatrixNumber_matrix_multiply(MatrixObject *self, PyObject *m) {
