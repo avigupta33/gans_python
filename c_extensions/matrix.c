@@ -19,8 +19,18 @@ static PyObject* Matrix_getCols(MatrixObject *self) {
     return PyLong_FromLong(self->cols);
 }
 
+static PyMethodDef MatrixMethodsDefs[] = {
+    {"getRows", (PyCFunction) Matrix_getRows, METH_NOARGS,
+     "Get number of rows"},
+    {"getCols", (PyCFunction) Matrix_getCols, METH_NOARGS,
+     "Get number of cols"},
+    {NULL, NULL, 0, NULL}       /* Sentinal */
+};
 
-static PyObject* Matrix_getData(MatrixObject *self) {
+
+/* PyGetSetDef functions */
+
+static PyObject* MatrixGetSet_getData(MatrixObject *self) {
     PyObject *list = PyList_New(self->len);
     for (Py_ssize_t i = 0; i < self->len; ++i) {
         PyObject *item = PyFloat_FromDouble(self->unordered_data[i]);
@@ -30,14 +40,10 @@ static PyObject* Matrix_getData(MatrixObject *self) {
     return list;
 }
 
-static PyMethodDef MatrixMethodsDefs[] = {
-    {"getRows", (PyCFunction) Matrix_getRows, METH_NOARGS,
-     "Get number of rows"},
-    {"getCols", (PyCFunction) Matrix_getCols, METH_NOARGS,
-     "Get number of cols"},
-    {"getData", (PyCFunction) Matrix_getData, METH_NOARGS,
-     "Get list of elements"},
-    {NULL, NULL, 0, NULL}       /* Sentinal */
+static PyGetSetDef MatrixGetSetDefs[] = {
+    {"data", (getter) MatrixGetSet_getData, NULL, 
+     "Get data"},
+    {NULL, NULL, NULL, NULL}    /* Sentinal */
 };
 
 
@@ -106,6 +112,7 @@ static PyTypeObject MatrixType = {
     .tp_dealloc = (destructor) Matrix_dealloc,
     .tp_methods = MatrixMethodsDefs,
     .tp_repr = (reprfunc) Matrix_repr,
+    .tp_getset = MatrixGetSetDefs
 };
 
 
