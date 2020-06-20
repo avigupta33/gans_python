@@ -1,12 +1,16 @@
 
 #include <python3.7/Python.h>
+#include "quantum_types.h"
+#include "iterstate.c"
 
 typedef struct {
     PyObject_HEAD
     long rows;
     long cols;
-    double *unordered_data;
+    T *unordered_data;
     Py_ssize_t len;
+    IterState *rowIter;
+    IterState *colIter;
     PyObject *Py_rows;
     PyObject *Py_cols;
     PyObject *Py_data;
@@ -91,7 +95,7 @@ static int Matrix_init(MatrixObject *self, PyObject *args, PyObject *kwds) {
     if (self->len != self->rows * self->cols) return -1;// TODO: figure out how to raise as python exception
 
     if (self->unordered_data) free(self->unordered_data);
-    self->unordered_data = (double*) malloc(sizeof(double) * self->len);
+    self->unordered_data = (T*) malloc(sizeof(T) * self->len);
     if (!self->unordered_data) {
         PyErr_NoMemory();
         return -1;
@@ -131,7 +135,7 @@ static PyTypeObject MatrixType = {
 
 
 /* PyNumberMethods functions */
-static PyObject* C_Matrix_new(long rows, long  cols, double *unordered_data) {
+static PyObject* C_Matrix_new(long rows, long  cols, T *unordered_data) {
     MatrixObject *self = (MatrixObject*) Matrix_new(&MatrixType, NULL, NULL);
     self->rows = rows;
     self->cols = cols;
@@ -145,7 +149,7 @@ static PyObject* unsupported_err(PyObject *a, PyObject *b, const char op) {
     return NULL;
 }
 
-typedef void(*compfunc)(double*, double*, double*, Py_ssize_t);
+typedef void(*compfunc)(T*, T*, T*, Py_ssize_t);
 
 static PyObject* MatrixNumber_merge(MatrixObject *self, PyObject *o, compfunc compress) {
     if (!PyObject_TypeCheck(o, &MatrixType)) {
@@ -156,13 +160,13 @@ static PyObject* MatrixNumber_merge(MatrixObject *self, PyObject *o, compfunc co
         PyErr_SetString(PyExc_ValueError, "Matrices are not the same shape");
         return NULL;
     }
-    double *ret_data = (double*) malloc(sizeof(double) * self->len);
+    T *ret_data = (T*) malloc(sizeof(T) * self->len);
     if (!ret_data) return PyErr_NoMemory();
     compress(self->unordered_data, m->unordered_data, ret_data, self->len);
     return C_Matrix_new(self->rows, self->cols, ret_data);
 }
 
-static void MatrixNumber_merge_add(double *a, double *b, double *res, Py_ssize_t len) {
+static void MatrixNumber_merge_add(T *a, T *b, T *res, Py_ssize_t len) {
     for (Py_ssize_t i = 0; i < len; ++i) {
         *res = *a + *b;
         ++a;
@@ -171,7 +175,7 @@ static void MatrixNumber_merge_add(double *a, double *b, double *res, Py_ssize_t
     }
 }
 
-static void MatrixNumber_merge_subtract(double *a, double *b, double *res, Py_ssize_t len) {
+static void MatrixNumber_merge_subtract(T *a, T *b, T *res, Py_ssize_t len) {
     for (Py_ssize_t i = 0; i < len; ++i) {
         *res = *a - *b;
         ++a;
@@ -180,7 +184,7 @@ static void MatrixNumber_merge_subtract(double *a, double *b, double *res, Py_ss
     }
 }
 
-static void MatrixNumber_merge_multiply(double *a, double *b, double *res, Py_ssize_t len) {
+static void MatrixNumber_merge_multiply(T *a, T *b, T *res, Py_ssize_t len) {
     for (Py_ssize_t i = 0; i < len; ++i) {
         *res = *a * *b;
         ++a;
