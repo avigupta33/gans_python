@@ -1,23 +1,48 @@
 The Matrix class will store all of it's important data in it's own internal struct
 
-typedef double*(*spaceIter)(
-
-Internal C information:
+C fields:
   long rows;
   long cols;
-  double *unordered_data;
-  rowIter
+  Py_ssize_t len;
+  double *data;
 
 Python-readable fields:
-  Py_rows (as 'rows')
-  Py_cols (as 'cols')
-  Py_data (as 'data')
+  MatrixObject *tranpose (still in the works, will involve cyclic GC)
+  PyLongObject *Py_rows (as 'rows')
+  PyLongObject *Py_cols (as 'cols')
+  PyTupleObject *Py_data (as 'data')
+  PyUnicodeObject *Py_repr (as '__repr__')
 
-the rows and cols PyObject refs will be created and INCREF'd on Matrix_new()
-the data field will be dynamically created and destroyed:
-  Py_data is initially set to null
-  When data is requested, check if Py_data is null
-    if it is, then rebuild from rowIter and INCREF
-  return Py_data
+On new:
+  alloc struct memory, initialize everything to NULL or 0
   
-  When the matrix is modified again, set Py_data to null and DECREF
+On init: (can be invoked many times)
+  read parameters
+  DECREF all Py_* fields if the exist
+  set internal C fields
+
+When a Py_* field is requested:
+  If the field is empty, build the PyObject and put it in the associated field
+  return the field
+
+Pseudocode for getting a transposed matrix
+PyObject* MatrixGet_transpose(self):
+    if self doesn't have a transpose:
+        t = Matrix_new()
+        t.rows, t.cols = self.cols, self.rows
+        t.pyrows, t.pycols = self.pycols, self.pyrows # these are always shared between self and its transpose
+        t.len = self.len
+        if self is a vector:
+            t.data = self.data
+        else:
+            T* t_data = malloc of same size as self.data
+            check for malloc fail
+            transpose algorithm here
+        INCREF t
+        self.transpose = t
+    return self.transpose
+    
+    
+    
+    
+
