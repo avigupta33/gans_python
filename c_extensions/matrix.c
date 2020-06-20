@@ -208,13 +208,12 @@ static PyTypeObject MatrixType = {
 
 
 /* PyNumberMethods functions */
-static PyObject* C_Matrix_new(long rows, long  cols, T *data) {
+static MatrixObject* C_Matrix_new(long rows, long  cols) {
     MatrixObject *self = (MatrixObject*) Matrix_new(&MatrixType, NULL, NULL);
     self->rows = rows;
     self->cols = cols;
     self->len = rows * cols;
-    self->data = data;
-    return (PyObject*) self;
+    return self;
 }
 
 static PyObject* unsupported_op(PyObject *a, PyObject *b, const char op) {
@@ -231,10 +230,11 @@ static PyObject* MatrixNumber_merge(MatrixObject *self, PyObject *o, compfunc co
         PyErr_SetString(PyExc_ValueError, "Matrices are not the same shape");
         return NULL;
     }
-    T *ret_data = (T*) malloc(sizeof(T) * self->len);
-    if (!ret_data) return PyErr_NoMemory();
-    compress(self->data, m->data, ret_data, self->len);
-    return C_Matrix_new(self->rows, self->cols, ret_data);
+    MatrixObject *res = C_Matrix_new(self->rows, self->cols);
+    res->data = (T*) malloc(sizeof(T) * res->len);
+    if (!res->data) return PyErr_NoMemory();
+    compress(self->data, m->data, res->data, self->len);
+    return (PyObject*) res;
 }
 
 static void MatrixNumber_merge_add(T *a, T *b, T *res, Py_ssize_t len) {
@@ -280,7 +280,22 @@ static PyObject* MatrixNumber_matrix_multiply(MatrixObject *self, PyObject *o) {
     if (!PyObject_TypeCheck(o, &MatrixType)) {
         return unsupported_op((PyObject*) self, o, '@');
     }
-    return Py_BuildValue("s", "Matrix multiplication");
+    MatrixObject *m = (MatrixObject*) o;
+    if (self->cols != m->rows) {
+        PyErr_Format(PyExc_ValueError, "Matrix A has dims (%ld, %ld) while Matrix B has dims (%ld, %ld); Incompatible for multiplication", 
+            self->rows, self->cols, m->rows, m->cols);
+        return NULL;
+    }
+    MatrixObject *res = C_Matrix_new(self->rows, m->cols);
+    res->data = (T*) malloc(sizeof(T) * res->len);
+    if (!res->data) return PyErr_NoMemory();
+
+    // TEMP CODE
+    for (long i = 0; i < res->len; ++i) {
+        res->data[i] = 0;
+    }
+
+    return (PyObject*) res;
 }
 
 static PyNumberMethods MatrixNumberMethods = {
