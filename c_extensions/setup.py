@@ -1,7 +1,7 @@
 
 from distutils.core import setup, Extension
 
-module = Extension("Matrix", sources=['matrix.c'])
+module = Extension("Quantum", sources=['matrix.c'])
 
 setup(name="Quantum Matrix",
       version="1,0",

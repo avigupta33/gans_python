@@ -5,8 +5,15 @@ typedef struct {
     PyObject_HEAD
     long rows;
     long cols;
-    Py_ssize_t len;
     double *unordered_data;
+    Py_ssize_t len;
+    PyObject *Py_rows;
+    PyObject *Py_cols;
+    PyObject *Py_data;
+    /*
+     some sort of struct that will let me iterate
+    */
+    
 } MatrixObject;
 
 
@@ -28,6 +35,7 @@ static PyObject* MatrixGetSet_getCols(MatrixObject *self) {
 
 static PyObject* MatrixGetSet_getData(MatrixObject *self) {
     PyObject *list = PyList_New(self->len);
+    Py_INCREF(list);
     for (Py_ssize_t i = 0; i < self->len; ++i) {
         PyObject *item = PyFloat_FromDouble(self->unordered_data[i]);
         Py_INCREF(item);
@@ -84,8 +92,10 @@ static int Matrix_init(MatrixObject *self, PyObject *args, PyObject *kwds) {
 
     if (self->unordered_data) free(self->unordered_data);
     self->unordered_data = (double*) malloc(sizeof(double) * self->len);
-    if (!self->unordered_data) return PyErr_NoMemory();
-    
+    if (!self->unordered_data) {
+        PyErr_NoMemory();
+        return -1;
+    }
     for (int i = 0; i < self->len; ++i) {
         PyObject *item = PyList_GetItem(data, i);
         if (!PyLong_Check(item)) return -1; // TODO proper error
@@ -139,7 +149,7 @@ typedef void(*compfunc)(double*, double*, double*, Py_ssize_t);
 
 static PyObject* MatrixNumber_merge(MatrixObject *self, PyObject *o, compfunc compress) {
     if (!PyObject_TypeCheck(o, &MatrixType)) {
-        return unsukpported_err((PyObject*) self, o, '+');
+        return unsupported_err((PyObject*) self, o, '+');
     }
     MatrixObject *m = (MatrixObject*) o;
     if (self->rows != m->rows || self->cols != m->cols) {
@@ -193,7 +203,7 @@ static PyObject* MatrixNumber_multiply(MatrixObject *self, PyObject *o) {
 
 static PyObject* MatrixNumber_matrix_multiply(MatrixObject *self, PyObject *o) {
     if (!PyObject_TypeCheck(o, &MatrixType)) {
-        return 
+        return unsupported_err((PyObject*) self, o, '@');
     }
     return Py_BuildValue("s", "Matrix multiplication");
 }
@@ -207,31 +217,30 @@ static PyNumberMethods MatrixNumberMethods = {
 
 
 /* Module definition with methods */
-static PyModuleDef MatrixModule = {
+static PyModuleDef QuantumModule = {
     PyModuleDef_HEAD_INIT,
-    .m_name = "Matrix",
-    .m_doc = "An efficient matrix class for ML",
+    .m_name = "Quantum Module",
+    .m_doc = "#4145",
     .m_size = -1,
 };
 
 
-PyMODINIT_FUNC PyInit_Matrix() {
+PyMODINIT_FUNC PyInit_Quantum() {
     // Any methods that needs to typecheck if something is a MatrixType
     // needs to be added here (and not in the construction of MatrixType)
     MatrixType.tp_as_number = &MatrixNumberMethods;
-    if (PyType_Ready(&MatrixType) < 0)
-        return NULL;
+    if (PyType_Ready(&MatrixType) < 0) return NULL;
 
-    PyObject *m = PyModule_Create(&MatrixModule);
+    PyObject *module = PyModule_Create(&QuantumModule);
 
-    if (!m) return NULL;
+    if (!module) return NULL;
 
     Py_INCREF(&MatrixType);
-    if (PyModule_AddObject(m, "Matrix", (PyObject*) &MatrixType) < 0) {
+    if (PyModule_AddObject(module, "Matrix", (PyObject*) &MatrixType) < 0) {
         Py_DECREF(&MatrixType);
-        Py_DECREF(m);
+        Py_DECREF(module);
         return NULL;
     }
-    return m;
+    return module;
 
 }
