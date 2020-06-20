@@ -11,24 +11,20 @@ typedef struct {
 
 
 /* PyMethodDef functions */
-static PyObject* Matrix_getRows(MatrixObject *self) {
-    return PyLong_FromLong(self->rows);
-}
-
-static PyObject* Matrix_getCols(MatrixObject *self) {
-    return PyLong_FromLong(self->cols);
-}
 
 static PyMethodDef MatrixMethodsDefs[] = {
-    {"getRows", (PyCFunction) Matrix_getRows, METH_NOARGS,
-     "Get number of rows"},
-    {"getCols", (PyCFunction) Matrix_getCols, METH_NOARGS,
-     "Get number of cols"},
     {NULL, NULL, 0, NULL}       /* Sentinal */
 };
 
 
 /* PyGetSetDef functions */
+static PyObject* MatrixGetSet_getRows(MatrixObject *self) {
+    return PyLong_FromLong(self->rows);
+}
+
+static PyObject* MatrixGetSet_getCols(MatrixObject *self) {
+    return PyLong_FromLong(self->cols);
+}
 
 static PyObject* MatrixGetSet_getData(MatrixObject *self) {
     PyObject *list = PyList_New(self->len);
@@ -41,6 +37,10 @@ static PyObject* MatrixGetSet_getData(MatrixObject *self) {
 }
 
 static PyGetSetDef MatrixGetSetDefs[] = {
+    {"rows", (getter) MatrixGetSet_getRows, NULL, 
+     "Get rows"},
+    {"cols", (getter) MatrixGetSet_getCols, NULL, 
+     "Get cols"},
     {"data", (getter) MatrixGetSet_getData, NULL, 
      "Get data"},
     {NULL, NULL, NULL, NULL}    /* Sentinal */
@@ -84,6 +84,7 @@ static int Matrix_init(MatrixObject *self, PyObject *args, PyObject *kwds) {
 
     if (self->unordered_data) free(self->unordered_data);
     self->unordered_data = (double*) malloc(sizeof(double) * self->len);
+    if (!self->unordered_data) return PyErr_NoMemory();
     
     for (int i = 0; i < self->len; ++i) {
         PyObject *item = PyList_GetItem(data, i);
@@ -134,9 +135,11 @@ static PyObject* unsupported_err(PyObject *a, PyObject *b, const char op) {
     return NULL;
 }
 
-static PyObject* MatrixNumber_compress(MatrixObject *self, PyObject *o, void(*combinator)(double*, double*, double*)) {
+typedef void(*compfunc)(double*, double*, double*, Py_ssize_t);
+
+static PyObject* MatrixNumber_merge(MatrixObject *self, PyObject *o, compfunc compress) {
     if (!PyObject_TypeCheck(o, &MatrixType)) {
-        return unsupported_err((PyObject*) self, o, '+');
+        return unsukpported_err((PyObject*) self, o, '+');
     }
     MatrixObject *m = (MatrixObject*) o;
     if (self->rows != m->rows || self->cols != m->cols) {
@@ -144,44 +147,54 @@ static PyObject* MatrixNumber_compress(MatrixObject *self, PyObject *o, void(*co
         return NULL;
     }
     double *ret_data = (double*) malloc(sizeof(double) * self->len);
-    double *self_ptr = self->unordered_data;
-    double *m_ptr = m->unordered_data;
-    double *ret_ptr = ret_data;
-    if (!ret_data) {
-        PyErr_SetString(PyExc_MemoryError, "Bad alloc");
-        return NULL;
-    }
-    for (Py_ssize_t i = 0; i < self->len; ++i) {
-        combinator(self_ptr++, m_ptr++, ret_ptr++);
-    }
+    if (!ret_data) return PyErr_NoMemory();
+    compress(self->unordered_data, m->unordered_data, ret_data, self->len);
     return C_Matrix_new(self->rows, self->cols, ret_data);
 }
 
-static void MatrixNumber_add_combinator(double *a, double *b, double *res) {
-    *res = *a + *b;
+static void MatrixNumber_merge_add(double *a, double *b, double *res, Py_ssize_t len) {
+    for (Py_ssize_t i = 0; i < len; ++i) {
+        *res = *a + *b;
+        ++a;
+        ++b;
+        ++res;
+    }
+}
+
+static void MatrixNumber_merge_subtract(double *a, double *b, double *res, Py_ssize_t len) {
+    for (Py_ssize_t i = 0; i < len; ++i) {
+        *res = *a - *b;
+        ++a;
+        ++b;
+        ++res;
+    }
+}
+
+static void MatrixNumber_merge_multiply(double *a, double *b, double *res, Py_ssize_t len) {
+    for (Py_ssize_t i = 0; i < len; ++i) {
+        *res = *a * *b;
+        ++a;
+        ++b;
+        ++res;
+    }
 }
 
 static PyObject* MatrixNumber_add(MatrixObject *self, PyObject *o) {
-    return MatrixNumber_compress(self, o, MatrixNumber_add_combinator);
-}
-
-static void MatrixNumber_subtract_combinator(double *a, double *b, double *res) {
-    *res = *a - *b;
+    return MatrixNumber_merge(self, o, MatrixNumber_merge_add);
 }
 
 static PyObject* MatrixNumber_subtract(MatrixObject *self, PyObject *o) {
-    return MatrixNumber_compress(self, o, MatrixNumber_subtract_combinator);
-}
-
-static void MatrixNumber_multiply_combinator(double *a, double *b, double *res) {
-    *res = *a * *b;
+    return MatrixNumber_merge(self, o, MatrixNumber_merge_subtract);
 }
 
 static PyObject* MatrixNumber_multiply(MatrixObject *self, PyObject *o) {
-    return MatrixNumber_compress(self, o, MatrixNumber_multiply_combinator);
+    return MatrixNumber_merge(self, o, MatrixNumber_merge_multiply);
 }
 
-static PyObject* MatrixNumber_matrix_multiply(MatrixObject *self, PyObject *m) {
+static PyObject* MatrixNumber_matrix_multiply(MatrixObject *self, PyObject *o) {
+    if (!PyObject_TypeCheck(o, &MatrixType)) {
+        return 
+    }
     return Py_BuildValue("s", "Matrix multiplication");
 }
 

@@ -15,13 +15,13 @@ def myFib(n):
 
 
 def fibC():
-    return fib(100)
+    return fib(10000)
 
 
 def fibPy():
-    return myFib(100)
+    return myFib(1000)
 
 if __name__ == "__main__":
     num = 1000
     print(timeit.timeit(fibC, number=num))
-    print(timeit.timeit(fibPy, number=num))
+    # print(timeit.timeit(fibPy, number=num))
