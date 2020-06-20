@@ -9,11 +9,17 @@ def display(mat):
     for row_i in range(r):
         print('\t'.join(str(data[row_i * c + col_i]) for col_i in range(c)).expandtabs(3))
 
-display(mat1)
+# display(mat1)
 
-# print(mat1.data)
-# print(mat2.data)
-# print("Addition:", (mat1 + mat2).data)
-# print("Subtraction:", (mat1 - mat2).data)
-# print("Multiply:", (mat1 * mat2).data)
+if __name__ == "__main__":
+    mytuple = 1,2,3
+    print(mytuple)
+    mytuple[0] = 4 # throws error 
+    print(mytuple)
+
+    # print(mat1.data)
+    # print(mat2.data)
+    # print("Addition:", (mat1 + mat2).data)
+    # print("Subtraction:", (mat1 - mat2).data)
+    # print("Multiply:", (mat1 * mat2).data)
 

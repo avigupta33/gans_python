@@ -123,10 +123,10 @@ class Matrix:
         return Matrix(mat1.rows, mat1.cols, data)
 
 
-# if __name__ == "__main__":
-#     w1 = Matrix(rows=2, cols=2, data=[100,-100,-100,100])
-#     b1 = Matrix(rows=2, cols=1, data=[-10, -10])
+if __name__ == "__main__":
+    w1 = Matrix(rows=2, cols=2, data=[100,-100,-100,100])
+    b1 = Matrix(rows=2, cols=1, data=[-10, -10])
 
-#     w2 = Matrix(rows=1)
-#     mat = Matrix(rows=4, cols=3, data=1)
-#     mat.display()
+    w2 = Matrix(rows=1)
+    mat = Matrix(rows=4, cols=3, data=1)
+    mat.display()
