@@ -1,0 +1,23 @@
+The Matrix class will store all of it's important data in it's own internal struct
+
+typedef double*(*spaceIter)(
+
+Internal C information:
+  long rows;
+  long cols;
+  double *unordered_data;
+  rowIter
+
+Python-readable fields:
+  Py_rows (as 'rows')
+  Py_cols (as 'cols')
+  Py_data (as 'data')
+
+the rows and cols PyObject refs will be created and INCREF'd on Matrix_new()
+the data field will be dynamically created and destroyed:
+  Py_data is initially set to null
+  When data is requested, check if Py_data is null
+    if it is, then rebuild from rowIter and INCREF
+  return Py_data
+  
+  When the matrix is modified again, set Py_data to null and DECREF
