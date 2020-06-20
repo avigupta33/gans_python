@@ -1,19 +1,19 @@
 
 #include <python3.7/Python.h>
 #include "quantum_types.h"
-#include "iterstate.c"
 
-typedef struct MatrixObject {
+
+typedef struct {
     PyObject_HEAD
     long rows;
     long cols;
     T *data;
     Py_ssize_t len;
-    struct MatrixObject *transpose;
-    PyLongObject *Py_rows;
-    PyLongObject *Py_cols;
-    PyTupleObject *Py_data; // Using tuple because it must be immutable so Avi can't mess it up
-    PyUnicodeObject *Py_repr; 
+    PyObject *transpose; // MatrixObject
+    PyObject *Py_rows; // PyLongObject
+    PyObject *Py_cols; // PyLongObject
+    PyObject *Py_data; // PyTupleObject, so it's immutable and Avi can't mess it up
+    PyObject *Py_repr; // PyUnicodeObject
 } MatrixObject;
 
 
@@ -82,6 +82,8 @@ static PyGetSetDef MatrixGetSetDefs[] = {
      "Get cols"},
     {"data", (getter) MatrixGet_data, NULL, 
      "Get data"},
+    {"T", (getter) MatrixGet_transpose, NULL, 
+     "Get transpose"},
     {NULL, NULL, NULL, NULL}    /* Sentinal */
 };
 
@@ -103,8 +105,32 @@ static PyObject* Matrix_new(PyTypeObject *type, PyObject *args, PyObject *kwds) 
     return (PyObject*) self;
 }
 
+static void clean_MatrixObject(MatrixObject* m) {
+    // TRANSPOSE DEALLOC FRAMEWORK
+    // if (self->transpose) {
+    //     // Has transpose
+    //     if (self->transpose->data != self->data) {
+    //         // self data isn't shared with transpose
+    //         Py_DECREF(self->Py_data);
+    //         free(self->data);
+    //     }
+    //         // Tell transpose to forget about me
+    // } else {
+    //     // No transpose
+    //     Py_DECREF(self->Py_rows);
+    //     Py_DECREF(self->Py_cols);
+    // }
+    if (m->data) free(m->data);
+    if (m->transpose) Py_DECREF(m->transpose);
+    if (m->Py_rows) Py_DECREF(m->Py_rows);
+    if (m->Py_cols) Py_DECREF(m->Py_cols);
+    if (m->Py_data) Py_DECREF(m->Py_data);
+    if (m->Py_repr) Py_DECREF(m->Py_repr);
+}
+
 static int Matrix_init(MatrixObject *self, PyObject *args, PyObject *kwds) {
-    static const char *kwlist[] = {"rows", "cols", "data", NULL};
+    clean_MatrixObject(self);
+    static char *kwlist[] = {"rows", "cols", "data", NULL};
     PyObject *input_data = NULL;
 
     // Parse args
@@ -131,19 +157,17 @@ static int Matrix_init(MatrixObject *self, PyObject *args, PyObject *kwds) {
 
     // Check for invalid number of elements received
     if (self->len != data_size) {
-        PyErr_Format(PyExc_ValueError, "expected %ld elements in data, but received %ld", self->len, data_size);
+        PyErr_Format(PyExc_ValueError, "expected %ld element(s) in data, but received %ld", self->len, data_size);
         return -1;
     }
 
-
-    if (self->data) free(self->data);
     self->data = (T*) malloc(sizeof(T) * self->len);
     if (!self->data) {
         PyErr_NoMemory();
         return -1;
     }
     for (int i = 0; i < self->len; ++i) {
-        PyObject *item = PyList_GetItem(self->Py_data, i);
+        PyObject *item = PyList_GetItem(input_data, i);
         if (!PyLong_Check(item)) return -1; // TODO proper error
         self->data[i] = PyFloat_AsDouble(item);
     }
@@ -151,26 +175,7 @@ static int Matrix_init(MatrixObject *self, PyObject *args, PyObject *kwds) {
 }
 
 static void Matrix_dealloc(MatrixObject *self) {
-    // TRANSPOSE DEALLOC FRAMEWORK
-    // if (self->transpose) {
-    //     // Has transpose
-    //     if (self->transpose->data != self->data) {
-    //         // self data isn't shared with transpose
-    //         Py_DECREF(self->Py_data);
-    //         free(self->data);
-    //     }
-    //         // Tell transpose to forget about me
-    // } else {
-    //     // No transpose
-    //     Py_DECREF(self->Py_rows);
-    //     Py_DECREF(self->Py_cols);
-    // }
-    if (self->data) free(self->data);
-    if (self->Py_rows) Py_DECREF(self->Py_rows);
-    if (self->Py_cols) Py_DECREF(self->Py_cols);
-    if (self->Py_data) Py_DECREF(self->Py_data);
-    if (self->Py_repr) Py_DECREF(self->Py_repr);
-
+    clean_MatrixObject(self);
     Py_TYPE(self)->tp_free((PyObject*) self);
 }
 
@@ -203,23 +208,23 @@ static PyTypeObject MatrixType = {
 
 
 /* PyNumberMethods functions */
-static PyObject* C_Matrix_new(long rows, long  cols, T *unordered_data) {
+static PyObject* C_Matrix_new(long rows, long  cols, T *data) {
     MatrixObject *self = (MatrixObject*) Matrix_new(&MatrixType, NULL, NULL);
     self->rows = rows;
     self->cols = cols;
     self->len = rows * cols;
-    self->unordered_data = unordered_data;
+    self->data = data;
     return (PyObject*) self;
 }
 
-static PyObject* unsupported_err(PyObject *a, PyObject *b, const char op) {
+static PyObject* unsupported_op(PyObject *a, PyObject *b, const char op) {
     PyErr_Format(PyExc_TypeError, "unsupported operand type(s) for %c: '%s' and '%s'", op, a->ob_type->tp_name, b->ob_type->tp_name);
     return NULL;
 }
 
 static PyObject* MatrixNumber_merge(MatrixObject *self, PyObject *o, compfunc compress) {
     if (!PyObject_TypeCheck(o, &MatrixType)) {
-        return unsupported_err((PyObject*) self, o, '+');
+        return unsupported_op((PyObject*) self, o, '+');
     }
     MatrixObject *m = (MatrixObject*) o;
     if (self->rows != m->rows || self->cols != m->cols) {
@@ -228,7 +233,7 @@ static PyObject* MatrixNumber_merge(MatrixObject *self, PyObject *o, compfunc co
     }
     T *ret_data = (T*) malloc(sizeof(T) * self->len);
     if (!ret_data) return PyErr_NoMemory();
-    compress(self->unordered_data, m->unordered_data, ret_data, self->len);
+    compress(self->data, m->data, ret_data, self->len);
     return C_Matrix_new(self->rows, self->cols, ret_data);
 }
 
@@ -273,7 +278,7 @@ static PyObject* MatrixNumber_multiply(MatrixObject *self, PyObject *o) {
 
 static PyObject* MatrixNumber_matrix_multiply(MatrixObject *self, PyObject *o) {
     if (!PyObject_TypeCheck(o, &MatrixType)) {
-        return unsupported_err((PyObject*) self, o, '@');
+        return unsupported_op((PyObject*) self, o, '@');
     }
     return Py_BuildValue("s", "Matrix multiplication");
 }
