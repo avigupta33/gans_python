@@ -269,7 +269,7 @@ static PyObject* MatrixNumber_merge(MatrixObject *self, PyObject *o, compfunc co
     return (PyObject*) res;
 }
 
-static void MatrixNumber_merge_add(T *a, T *b, T *res, Py_ssize_t size) {
+static void MatrixNumber_merge_add(T *a, T *b, T *res, const Py_ssize_t size) {
     for (Py_ssize_t i = 0; i < size; ++i) {
         *res = *a + *b;
         ++a;
@@ -278,7 +278,7 @@ static void MatrixNumber_merge_add(T *a, T *b, T *res, Py_ssize_t size) {
     }
 }
 
-static void MatrixNumber_merge_subtract(T *a, T *b, T *res, Py_ssize_t size) {
+static void MatrixNumber_merge_subtract(T *a, T *b, T *res, const Py_ssize_t size) {
     for (Py_ssize_t i = 0; i < size; ++i) {
         *res = *a - *b;
         ++a;
@@ -287,7 +287,7 @@ static void MatrixNumber_merge_subtract(T *a, T *b, T *res, Py_ssize_t size) {
     }
 }
 
-static void MatrixNumber_merge_multiply(T *a, T *b, T *res, Py_ssize_t size) {
+static void MatrixNumber_merge_multiply(T *a, T *b, T *res, const Py_ssize_t size) {
     for (Py_ssize_t i = 0; i < size; ++i) {
         *res = *a * *b;
         ++a;
@@ -308,15 +308,12 @@ static PyObject* MatrixNumber_multiply(MatrixObject *self, PyObject *o) {
     return MatrixNumber_merge(self, o, MatrixNumber_merge_multiply);
 }
 
-// Prepare iterators for next dot in matrix product
-#define QMatrix_MatMulNextDot(a,b) ((a)->ptr -= (a)->cols);\
-                                   ((b)->ptr -= (b)->size - 1)
-
 static PyObject* MatrixNumber_matrix_multiply(MatrixObject *self, PyObject *o) {
     if (Py_TYPE(o) != &MatrixType) {
         return unsupported_op((PyObject*) self, o, '@');
     }
     MatrixObject *m = (MatrixObject*) o;
+
     if (self->cols != m->rows) {
         PyErr_Format(PyExc_ValueError, "Matrix A has dims (%ld, %ld) while Matrix B has dims (%ld, %ld); Incompatible for multiplication", 
             self->rows, self->cols, m->rows, m->cols);
@@ -328,7 +325,8 @@ static PyObject* MatrixNumber_matrix_multiply(MatrixObject *self, PyObject *o) {
     QMatrix_iterReset(self);
     QMatrix_iterReset(m);
     for (long row_i = 0; row_i < res->rows; ++row_i) {
-        for (long col_i = 0; col_i < res->cols; ++col_i) {
+        long col_i = 0;
+        while (1) {
             *res->ptr = 0;
             for (long i = 0; i < self->cols; ++i) {
                 *res->ptr += *self->ptr * *m->ptr;
@@ -336,10 +334,13 @@ static PyObject* MatrixNumber_matrix_multiply(MatrixObject *self, PyObject *o) {
                 m->ptr += m->cols;
             }
             ++res->ptr;
-            QMatrix_MatMulNextDot(self, m);
+            ++col_i;
+            m->ptr -= m->size - 1;
+            if (col_i == res->cols) break;
+            // only rewind row when not at end of col
+            self->ptr -= self->cols;
         }
-        self->ptr += self->cols;  // can optimize
-        QMatrix_iterReset(m);
+        m->ptr = m->data;
     }
     return (PyObject*) res;
 }
