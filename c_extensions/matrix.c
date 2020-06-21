@@ -1,20 +1,81 @@
 
 #include <python3.7/Python.h>
 #include "quantum_types.h"
-
+#define QMatrix_iterReset(m) ((m)->ptr = (m)->data)
+#define QMatrix_iterBackRow(m) ((m)->ptr -= (m)->cols)
+#define QMatrix_iterBackCol(m) (--(m)->ptr)
 
 typedef struct {
     PyObject_HEAD
     long rows;
     long cols;
+    Py_ssize_t size;
     T *data;
-    Py_ssize_t len;
-    PyObject *transpose; // MatrixObject
-    PyObject *Py_rows; // PyLongObject
-    PyObject *Py_cols; // PyLongObject
-    PyObject *Py_data; // PyTupleObject, so it's immutable and Avi can't mess it up
-    PyObject *Py_repr; // PyUnicodeObject
+    T *end;                 // Iter end
+    T *ptr;                 // Iter ptr
+    PyObject *transpose;    // MatrixObject
+    PyObject *Py_rows;      // PyLongObject
+    PyObject *Py_cols;      // PyLongObject
+    PyObject *Py_data;      // PyTupleObject, so it's immutable and Avi can't mess it up
+    PyObject *Py_repr;      // PyUnicodeObject
 } MatrixObject;
+
+
+/* Custom MatrixObject functions */
+static MatrixObject* QMatrix_new(long rows, long  cols) {
+    MatrixObject *self = (MatrixObject*) Matrix_new(&MatrixType, NULL, NULL);
+    self->rows = rows;
+    self->cols = cols;
+    self->size = rows * cols;
+    return self;
+}
+
+static void QMatrix_clean(MatrixObject* m) {
+    // TRANSPOSE DEALLOC FRAMEWORK
+    // if (self->transpose) {
+    //     // Has transpose
+    //     if (self->transpose->data != self->data) {
+    //         // self data isn't shared with transpose
+    //         Py_DECREF(self->Py_data);
+    //         free(self->data);
+    //     }
+    //         // Tell transpose to forget about me
+    // } else {
+    //     // No transpose
+    //     Py_DECREF(self->Py_rows);
+    //     Py_DECREF(self->Py_cols);
+    // }
+    if (m->data) free(m->data);
+    if (m->transpose) Py_DECREF(m->transpose);
+    if (m->Py_rows) Py_DECREF(m->Py_rows);
+    if (m->Py_cols) Py_DECREF(m->Py_cols);
+    if (m->Py_data) Py_DECREF(m->Py_data);
+    if (m->Py_repr) Py_DECREF(m->Py_repr);
+}
+
+static int QMatrix_mallocData(MatrixObject *m) {
+    // returns null on failure
+    m->data = (T*) malloc(sizeof(T) * m->size);
+    if (!m->data) return PyErr_NoMemory();
+    m->ptr = m->data;
+    m->end = m->data + m->size;
+    return 1;
+}
+
+static T* QMatrix_iterNextInRow(MatrixObject *m) {
+    T *res = m->ptr;
+    ++m->ptr;
+    return res;
+}
+
+static T* QMatrix_iterNextInCol(MatrixObject *m) {
+    T *res = m->ptr;
+    m->ptr += m->cols;
+    if (m->ptr >= m->end) {
+        m->ptr -= m->size - 1;
+    }
+    return res;
+}
 
 
 /* PyMethodDef functions */
@@ -50,13 +111,13 @@ static PyObject* MatrixGet_cols(MatrixObject *self) {
 
 static PyObject* MatrixGet_data(MatrixObject *self) {
     if (!self->Py_data) {
-        self->Py_data = PyTuple_New(self->len);
+        self->Py_data = PyTuple_New(self->size);
         if (self->Py_data) {
             Py_INCREF(self->Py_data);
         } else {
             return PyErr_NoMemory();
         }
-        for (Py_ssize_t i = 0; i < self->len; ++i) {
+        for (Py_ssize_t i = 0; i < self->size; ++i) {
             PyObject *item = PyFloat_FromDouble(self->data[i]);
             Py_INCREF(item);
             PyTuple_SET_ITEM(self->Py_data, i, item);
@@ -95,8 +156,10 @@ static PyObject* Matrix_new(PyTypeObject *type, PyObject *args, PyObject *kwds) 
 
     self->rows = 0;
     self->cols = 0;
+    self->size = 0;
     self->data = NULL;
-    self->len = 0;
+    self->end = NULL;
+    self->ptr = NULL;
     self->transpose = NULL;
     self->Py_rows = NULL;
     self->Py_cols = NULL;
@@ -105,31 +168,8 @@ static PyObject* Matrix_new(PyTypeObject *type, PyObject *args, PyObject *kwds) 
     return (PyObject*) self;
 }
 
-static void clean_MatrixObject(MatrixObject* m) {
-    // TRANSPOSE DEALLOC FRAMEWORK
-    // if (self->transpose) {
-    //     // Has transpose
-    //     if (self->transpose->data != self->data) {
-    //         // self data isn't shared with transpose
-    //         Py_DECREF(self->Py_data);
-    //         free(self->data);
-    //     }
-    //         // Tell transpose to forget about me
-    // } else {
-    //     // No transpose
-    //     Py_DECREF(self->Py_rows);
-    //     Py_DECREF(self->Py_cols);
-    // }
-    if (m->data) free(m->data);
-    if (m->transpose) Py_DECREF(m->transpose);
-    if (m->Py_rows) Py_DECREF(m->Py_rows);
-    if (m->Py_cols) Py_DECREF(m->Py_cols);
-    if (m->Py_data) Py_DECREF(m->Py_data);
-    if (m->Py_repr) Py_DECREF(m->Py_repr);
-}
-
 static int Matrix_init(MatrixObject *self, PyObject *args, PyObject *kwds) {
-    clean_MatrixObject(self);
+    QMatrix_clean(self);
     static char *kwlist[] = {"rows", "cols", "data", NULL};
     PyObject *input_data = NULL;
 
@@ -145,7 +185,7 @@ static int Matrix_init(MatrixObject *self, PyObject *args, PyObject *kwds) {
         return -1;
     }
 
-    self->len = self->rows * self->cols;
+    self->size = self->rows * self->cols;
 
     // Check that a list was received
     if (!PyList_Check(input_data)) {
@@ -156,26 +196,26 @@ static int Matrix_init(MatrixObject *self, PyObject *args, PyObject *kwds) {
     Py_ssize_t data_size = PyList_Size(input_data);
 
     // Check for invalid number of elements received
-    if (self->len != data_size) {
+    if (self->size != data_size) {
         PyErr_Format(PyExc_ValueError, "expected %ld element(s) in data, but received %ld", self->len, data_size);
         return -1;
     }
 
-    self->data = (T*) malloc(sizeof(T) * self->len);
-    if (!self->data) {
-        PyErr_NoMemory();
-        return -1;
-    }
-    for (int i = 0; i < self->len; ++i) {
+    if (!QMatrix_mallocData(self)) return NULL;
+
+    for (int i = 0; i < self->size; ++i) {
         PyObject *item = PyList_GetItem(input_data, i);
-        if (!PyLong_Check(item)) return -1; // TODO proper error
+        if (!PyLong_Check(item)) {
+            PyErr_Format(PyExc_TypeError, "encounted non-numeric type in data: %s", Py_TYPE(item)->tp_name);
+            return -1;
+        }
         self->data[i] = PyFloat_AsDouble(item);
     }
     return 0;
 }
 
 static void Matrix_dealloc(MatrixObject *self) {
-    clean_MatrixObject(self);
+    QMatrix_clean(self);
     Py_TYPE(self)->tp_free((PyObject*) self);
 }
 
@@ -208,16 +248,10 @@ static PyTypeObject MatrixType = {
 
 
 /* PyNumberMethods functions */
-static MatrixObject* C_Matrix_new(long rows, long  cols) {
-    MatrixObject *self = (MatrixObject*) Matrix_new(&MatrixType, NULL, NULL);
-    self->rows = rows;
-    self->cols = cols;
-    self->len = rows * cols;
-    return self;
-}
+
 
 static PyObject* unsupported_op(PyObject *a, PyObject *b, const char op) {
-    PyErr_Format(PyExc_TypeError, "unsupported operand type(s) for %c: '%s' and '%s'", op, a->ob_type->tp_name, b->ob_type->tp_name);
+    PyErr_Format(PyExc_TypeError, "unsupported operand type(s) for %c: '%s' and '%s'", op, Py_TYPE(a)->tp_name, Py_TYPE(b)->tp_name);
     return NULL;
 }
 
@@ -230,10 +264,9 @@ static PyObject* MatrixNumber_merge(MatrixObject *self, PyObject *o, compfunc co
         PyErr_SetString(PyExc_ValueError, "Matrices are not the same shape");
         return NULL;
     }
-    MatrixObject *res = C_Matrix_new(self->rows, self->cols);
-    res->data = (T*) malloc(sizeof(T) * res->len);
-    if (!res->data) return PyErr_NoMemory();
-    compress(self->data, m->data, res->data, self->len);
+    MatrixObject *res = QMatrix_new(self->rows, self->cols);
+    if (!QMatrix_mallocData(res)) return NULL;
+    compress(self->data, m->data, res->data, self->size);
     return (PyObject*) res;
 }
 
@@ -277,7 +310,7 @@ static PyObject* MatrixNumber_multiply(MatrixObject *self, PyObject *o) {
 }
 
 static PyObject* MatrixNumber_matrix_multiply(MatrixObject *self, PyObject *o) {
-    if (!PyObject_TypeCheck(o, &MatrixType)) {
+    if (Py_TYPE(o) != &MatrixType) {
         return unsupported_op((PyObject*) self, o, '@');
     }
     MatrixObject *m = (MatrixObject*) o;
@@ -286,14 +319,44 @@ static PyObject* MatrixNumber_matrix_multiply(MatrixObject *self, PyObject *o) {
             self->rows, self->cols, m->rows, m->cols);
         return NULL;
     }
-    MatrixObject *res = C_Matrix_new(self->rows, m->cols);
-    res->data = (T*) malloc(sizeof(T) * res->len);
+    MatrixObject *res = QMatrix_new(self->rows, m->cols);
+    res->data = (T*) malloc(sizeof(T) * res->size);
     if (!res->data) return PyErr_NoMemory();
 
-    // TEMP CODE
-    for (long i = 0; i < res->len; ++i) {
+    for (long i = 0; i < res->size; ++i) {
         res->data[i] = 0;
     }
+
+    /*
+    set the shared-dim variable (self->cols)
+    reset each matrix iter, in case one didn't finish for some reason
+
+    */
+    QMatrix_iterReset(self);
+    QMatrix_iterReset(m);
+    for (res->ptr = res->data; res->ptr != res->end; ++res->ptr) {
+        *res->ptr = 0;
+        for (long i = 0; i < self->cols; ++i) {
+            *res->ptr += *QMatrix_iterNextInRow(self) * *QMatrix_iterNextInCol(m);
+        }
+        QMatrix_iterBackRow(self);
+        QMatrix_iterBackCol(m);
+    }
+    for (long row_i = 0; row_i < res->rows; ++row_i) {
+        for (long col_i = 0; col_i < res->cols; ++col_i) {
+            *res->ptr = 0;
+            for (long i = 0; i < self->cols; ++i) {
+                *res->ptr += *QMatrix_iterNextInRow(self) * *QMatrix_iterNextInCol(m);
+            }
+            ++res->ptr;
+            QMatrix_iterBackRow(self);
+            // Here, self is ready for next row and m is already at the next col
+        }
+        QMatrix_iterReset(m);
+    }
+
+
+
 
     return (PyObject*) res;
 }
