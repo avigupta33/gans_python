@@ -122,11 +122,25 @@ class Matrix:
         data = [combinator(a,b) for a,b in zip(mat1.data, mat2.data)]
         return Matrix(mat1.rows, mat1.cols, data)
 
+from time import time
+
+def timer(func, iters=1000):
+    dim = 100
+    mean = sum(func(dim) for _ in range(iters))/iters
+    print(f"Python ({dim},{dim}) @ ({dim},{dim})")
+    print(f"Mean execution time of {iters} runs: {mean}")
+
+def matmulTest(dim):
+    mat1 = Matrix(rows=dim, cols=dim, data=[x for x in range(10000)])
+    mat2 = Matrix(rows=dim, cols=dim, data=[x for x in range(10000)])
+    ts = time()
+    mat2 @ mat1
+    te = time()
+    return te - ts
+    
 
 if __name__ == "__main__":
-    w1 = Matrix(rows=2, cols=2, data=[100,-100,-100,100])
-    b1 = Matrix(rows=2, cols=1, data=[-10, -10])
+    timer(matmulTest)
 
-    w2 = Matrix(rows=1)
-    mat = Matrix(rows=4, cols=3, data=1)
-    mat.display()
+
+

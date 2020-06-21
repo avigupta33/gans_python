@@ -2,12 +2,9 @@
 #include <python3.7/Python.h>
 #include "quantum_types.h"
 #define QMatrix_iterReset(m) ((m)->ptr = (m)->data)
-// Prepare iterators for next dot in matrix product
-#define QMatrix_iterNextDot(a,b) ((a)->ptr -= (a)->cols);\
-                                 ((b)->ptr -= (b)->size - 1)
-#define QMatrix_iterNextRow(a,b) (QMatrix_iterReset(b))
 
-typedef struct {
+
+typedef struct MatrixObject {
     PyObject_HEAD
     long rows;
     long cols;
@@ -24,13 +21,7 @@ typedef struct {
 
 
 /* Custom MatrixObject functions */
-static MatrixObject* QMatrix_new(long rows, long  cols) {
-    MatrixObject *self = (MatrixObject*) Matrix_new(&MatrixType, NULL, NULL);
-    self->rows = rows;
-    self->cols = cols;
-    self->size = rows * cols;
-    return self;
-}
+
 
 static void QMatrix_clean(MatrixObject* m) {
     // TRANSPOSE DEALLOC FRAMEWORK
@@ -58,22 +49,13 @@ static void QMatrix_clean(MatrixObject* m) {
 static int QMatrix_mallocData(MatrixObject *m) {
     // returns null on failure
     m->data = (T*) malloc(sizeof(T) * m->size);
-    if (!m->data) return PyErr_NoMemory();
+    if (!m->data) {
+        PyErr_NoMemory();
+        return 0;
+    }
     m->ptr = m->data;
     m->end = m->data + m->size;
     return 1;
-}
-
-static T* QMatrix_iterNextInRow(MatrixObject *m) {
-    T *res = m->ptr;
-    ++m->ptr;
-    return res;
-}
-
-static T* QMatrix_iterNextInCol(MatrixObject *m) {
-    T *res = m->ptr;
-    m->ptr += m->cols;
-    return res;
 }
 
 
@@ -194,13 +176,14 @@ static int Matrix_init(MatrixObject *self, PyObject *args, PyObject *kwds) {
 
     Py_ssize_t data_size = PyList_Size(input_data);
 
+
     // Check for invalid number of elements received
     if (self->size != data_size) {
-        PyErr_Format(PyExc_ValueError, "expected %ld element(s) in data, but received %ld", self->len, data_size);
+        PyErr_Format(PyExc_ValueError, "expected %ld element(s) in data, but received %ld", self->size, data_size);
         return -1;
     }
 
-    if (!QMatrix_mallocData(self)) return NULL;
+    if (!QMatrix_mallocData(self)) return -1;
 
     for (int i = 0; i < self->size; ++i) {
         PyObject *item = PyList_GetItem(input_data, i);
@@ -247,6 +230,14 @@ static PyTypeObject MatrixType = {
 
 
 /* PyNumberMethods functions */
+static MatrixObject* QMatrix_new(long rows, long  cols) {
+    MatrixObject *self = (MatrixObject*) Matrix_new(&MatrixType, NULL, NULL);
+    self->rows = rows;
+    self->cols = cols;
+    self->size = rows * cols;
+    return self;
+}
+
 static PyObject* unsupported_op(PyObject *a, PyObject *b, const char op) {
     PyErr_Format(PyExc_TypeError, "unsupported operand type(s) for %c: '%s' and '%s'", op, Py_TYPE(a)->tp_name, Py_TYPE(b)->tp_name);
     return NULL;
@@ -267,8 +258,8 @@ static PyObject* MatrixNumber_merge(MatrixObject *self, PyObject *o, compfunc co
     return (PyObject*) res;
 }
 
-static void MatrixNumber_merge_add(T *a, T *b, T *res, Py_ssize_t len) {
-    for (Py_ssize_t i = 0; i < len; ++i) {
+static void MatrixNumber_merge_add(T *a, T *b, T *res, Py_ssize_t size) {
+    for (Py_ssize_t i = 0; i < size; ++i) {
         *res = *a + *b;
         ++a;
         ++b;
@@ -276,8 +267,8 @@ static void MatrixNumber_merge_add(T *a, T *b, T *res, Py_ssize_t len) {
     }
 }
 
-static void MatrixNumber_merge_subtract(T *a, T *b, T *res, Py_ssize_t len) {
-    for (Py_ssize_t i = 0; i < len; ++i) {
+static void MatrixNumber_merge_subtract(T *a, T *b, T *res, Py_ssize_t size) {
+    for (Py_ssize_t i = 0; i < size; ++i) {
         *res = *a - *b;
         ++a;
         ++b;
@@ -285,8 +276,8 @@ static void MatrixNumber_merge_subtract(T *a, T *b, T *res, Py_ssize_t len) {
     }
 }
 
-static void MatrixNumber_merge_multiply(T *a, T *b, T *res, Py_ssize_t len) {
-    for (Py_ssize_t i = 0; i < len; ++i) {
+static void MatrixNumber_merge_multiply(T *a, T *b, T *res, Py_ssize_t size) {
+    for (Py_ssize_t i = 0; i < size; ++i) {
         *res = *a * *b;
         ++a;
         ++b;
@@ -306,6 +297,10 @@ static PyObject* MatrixNumber_multiply(MatrixObject *self, PyObject *o) {
     return MatrixNumber_merge(self, o, MatrixNumber_merge_multiply);
 }
 
+// Prepare iterators for next dot in matrix product
+#define QMatrix_MatMulNextDot(a,b) ((a)->ptr -= (a)->cols);\
+                                   ((b)->ptr -= (b)->size - 1)
+
 static PyObject* MatrixNumber_matrix_multiply(MatrixObject *self, PyObject *o) {
     if (Py_TYPE(o) != &MatrixType) {
         return unsupported_op((PyObject*) self, o, '@');
@@ -319,11 +314,6 @@ static PyObject* MatrixNumber_matrix_multiply(MatrixObject *self, PyObject *o) {
     MatrixObject *res = QMatrix_new(self->rows, m->cols);
     if (!QMatrix_mallocData(res)) return NULL;
 
-    /*
-    set the shared-dim variable (self->cols)
-    reset each matrix iter, in case one didn't finish for some reason
-
-    */
     QMatrix_iterReset(self);
     QMatrix_iterReset(m);
     for (long row_i = 0; row_i < res->rows; ++row_i) {
@@ -335,9 +325,9 @@ static PyObject* MatrixNumber_matrix_multiply(MatrixObject *self, PyObject *o) {
                 m->ptr += m->cols;
             }
             ++res->ptr;
-            QMatrix_iterNextDot(self, m);
+            QMatrix_MatMulNextDot(self, m);
         }
-        QMatrix_iterNextRow(self, m);
+        QMatrix_iterReset(m);
     }
     return (PyObject*) res;
 }
