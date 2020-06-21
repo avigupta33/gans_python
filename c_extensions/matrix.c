@@ -2,8 +2,10 @@
 #include <python3.7/Python.h>
 #include "quantum_types.h"
 #define QMatrix_iterReset(m) ((m)->ptr = (m)->data)
-#define QMatrix_iterBackRow(m) ((m)->ptr -= (m)->cols)
-#define QMatrix_iterBackCol(m) (--(m)->ptr)
+// Prepare iterators for next dot in matrix product
+#define QMatrix_iterNextDot(a,b) ((a)->ptr -= (a)->cols);\
+                                 ((b)->ptr -= (b)->size - 1)
+#define QMatrix_iterNextRow(a,b) (QMatrix_iterReset(b))
 
 typedef struct {
     PyObject_HEAD
@@ -71,9 +73,6 @@ static T* QMatrix_iterNextInRow(MatrixObject *m) {
 static T* QMatrix_iterNextInCol(MatrixObject *m) {
     T *res = m->ptr;
     m->ptr += m->cols;
-    if (m->ptr >= m->end) {
-        m->ptr -= m->size - 1;
-    }
     return res;
 }
 
@@ -248,8 +247,6 @@ static PyTypeObject MatrixType = {
 
 
 /* PyNumberMethods functions */
-
-
 static PyObject* unsupported_op(PyObject *a, PyObject *b, const char op) {
     PyErr_Format(PyExc_TypeError, "unsupported operand type(s) for %c: '%s' and '%s'", op, Py_TYPE(a)->tp_name, Py_TYPE(b)->tp_name);
     return NULL;
@@ -320,12 +317,7 @@ static PyObject* MatrixNumber_matrix_multiply(MatrixObject *self, PyObject *o) {
         return NULL;
     }
     MatrixObject *res = QMatrix_new(self->rows, m->cols);
-    res->data = (T*) malloc(sizeof(T) * res->size);
-    if (!res->data) return PyErr_NoMemory();
-
-    for (long i = 0; i < res->size; ++i) {
-        res->data[i] = 0;
-    }
+    if (!QMatrix_mallocData(res)) return NULL;
 
     /*
     set the shared-dim variable (self->cols)
@@ -334,30 +326,19 @@ static PyObject* MatrixNumber_matrix_multiply(MatrixObject *self, PyObject *o) {
     */
     QMatrix_iterReset(self);
     QMatrix_iterReset(m);
-    for (res->ptr = res->data; res->ptr != res->end; ++res->ptr) {
-        *res->ptr = 0;
-        for (long i = 0; i < self->cols; ++i) {
-            *res->ptr += *QMatrix_iterNextInRow(self) * *QMatrix_iterNextInCol(m);
-        }
-        QMatrix_iterBackRow(self);
-        QMatrix_iterBackCol(m);
-    }
     for (long row_i = 0; row_i < res->rows; ++row_i) {
         for (long col_i = 0; col_i < res->cols; ++col_i) {
             *res->ptr = 0;
             for (long i = 0; i < self->cols; ++i) {
-                *res->ptr += *QMatrix_iterNextInRow(self) * *QMatrix_iterNextInCol(m);
+                *res->ptr += *self->ptr * *m->ptr;
+                ++self->ptr;
+                m->ptr += m->cols;
             }
             ++res->ptr;
-            QMatrix_iterBackRow(self);
-            // Here, self is ready for next row and m is already at the next col
+            QMatrix_iterNextDot(self, m);
         }
-        QMatrix_iterReset(m);
+        QMatrix_iterNextRow(self, m);
     }
-
-
-
-
     return (PyObject*) res;
 }
 
