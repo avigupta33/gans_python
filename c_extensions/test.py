@@ -1,6 +1,6 @@
 from Quantum import Matrix
 
-def display(mat, tabspace=4):
+def display(mat, tabspace=3):
     r, c, data = mat.rows, mat.cols, mat.data
     index = 0
     for row_i in range(r):
@@ -24,14 +24,20 @@ def matmulTest(dim):
     
 
 if __name__ == "__main__":
-    timer(matmulTest)
+    # timer(matmulTest)
     # pass
-    # dim = 5
-    # mat1 = Matrix(rows=dim, cols=dim, data=[x for x in range(dim*dim)])
+    dim = 5
+    mat1 = Matrix(rows=dim, cols=dim, data=[x for x in range(dim*dim)])
     # print(mat1.T)
-    # mat2 = Matrix(rows=dim, cols=dim, data=[x for x in range(dim*dim)])
+    mat2 = Matrix(rows=dim, cols=dim, data=[x for x in range(dim*dim)])
     # display(mat1)
     # display(mat2)
+    # print(mat1* 8)
+    # display(mat1*2)
+    # display(mat1*1.5)
+    # display(2*mat1)
+    # display(1.5*mat1)
+
     # add = mat1 + mat2
     # sub = mat1 - mat2
     # mul = mat1 * mat2

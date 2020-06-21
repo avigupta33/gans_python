@@ -1,8 +1,8 @@
 
 #include <python3.7/Python.h>
 #include "quantum_types.h"
-#define QMatrix_iterReset(m) ((m)->ptr = (m)->data)
 
+#define QMatrix_Check(o) (Py_TYPE(o) == &MatrixType)
 
 typedef struct MatrixObject {
     PyObject_HEAD
@@ -10,8 +10,6 @@ typedef struct MatrixObject {
     long cols;
     Py_ssize_t size;
     T *data;
-    T *end;                 // Iter end
-    T *ptr;                 // Iter ptr
     PyObject *transpose;    // MatrixObject
     PyObject *Py_rows;      // PyLongObject
     PyObject *Py_cols;      // PyLongObject
@@ -51,8 +49,6 @@ static int QMatrix_mallocData(MatrixObject *m) {
         PyErr_NoMemory();
         return 0;
     }
-    m->ptr = m->data;
-    m->end = m->data + m->size;
     return 1;
 }
 
@@ -136,8 +132,6 @@ static PyObject* Matrix_new(PyTypeObject *type, PyObject *args, PyObject *kwds) 
     self->cols = 0;
     self->size = 0;
     self->data = NULL;
-    self->end = NULL;
-    self->ptr = NULL;
     self->transpose = NULL;
     self->Py_rows = NULL;
     self->Py_cols = NULL;
@@ -254,18 +248,14 @@ static PyObject* unsupported_op(PyObject *a, PyObject *b, const char op) {
     return NULL;
 }
 
-static PyObject* MatrixNumber_merge(MatrixObject *self, PyObject *o, compfunc compress) {
-    if (!PyObject_TypeCheck(o, &MatrixType)) {
-        return unsupported_op((PyObject*) self, o, '+');
-    }
-    MatrixObject *m = (MatrixObject*) o;
-    if (self->rows != m->rows || self->cols != m->cols) {
-        PyErr_SetString(PyExc_ValueError, "Matrices are not the same shape");
+static PyObject* MatrixNumber_merge(MatrixObject *mat1, MatrixObject *mat2, compfunc compress) {
+    if (mat1->rows != mat2->rows || mat1->cols != mat2->cols) {
+        PyErr_SetString(PyExc_ValueError, "matrices are not the same shape");
         return NULL;
     }
-    MatrixObject *res = QMatrix_new(self->rows, self->cols);
+    MatrixObject *res = QMatrix_new(mat1->rows, mat1->cols);
     if (!QMatrix_mallocData(res)) return NULL;
-    compress(self->data, m->data, res->data, self->size);
+    compress(mat1->data, mat2->data, res->data, mat1->size);
     return (PyObject*) res;
 }
 
@@ -296,51 +286,78 @@ static void MatrixNumber_merge_multiply(T *a, T *b, T *res, const Py_ssize_t siz
     }
 }
 
-static PyObject* MatrixNumber_add(MatrixObject *self, PyObject *o) {
-    return MatrixNumber_merge(self, o, MatrixNumber_merge_add);
-}
-
-static PyObject* MatrixNumber_subtract(MatrixObject *self, PyObject *o) {
-    return MatrixNumber_merge(self, o, MatrixNumber_merge_subtract);
-}
-
-static PyObject* MatrixNumber_multiply(MatrixObject *self, PyObject *o) {
-    return MatrixNumber_merge(self, o, MatrixNumber_merge_multiply);
-}
-
-static PyObject* MatrixNumber_matrix_multiply(MatrixObject *self, PyObject *o) {
-    if (Py_TYPE(o) != &MatrixType) {
-        return unsupported_op((PyObject*) self, o, '@');
+static PyObject* MatrixNumber_scalar_multiply(MatrixObject *mat, PyObject *scalar) {
+    double k = PyFloat_AsDouble(scalar);
+    MatrixObject *res = QMatrix_new(mat->rows, mat->cols);
+    if (!QMatrix_mallocData(res)) return NULL;
+    for (Py_ssize_t i = 0; i < mat->size; ++i) {
+        res->data[i] = mat->data[i] * k;
     }
-    MatrixObject *m = (MatrixObject*) o;
+    return (PyObject*) res;
+}
 
-    if (self->cols != m->rows) {
-        PyErr_Format(PyExc_ValueError, "Matrix A has dims (%ld, %ld) while Matrix B has dims (%ld, %ld); Incompatible for multiplication", 
-            self->rows, self->cols, m->rows, m->cols);
+static PyObject* MatrixNumber_add(PyObject *a, PyObject *b) {
+    if (QMatrix_Check(a) && QMatrix_Check(b)) {
+        return MatrixNumber_merge((MatrixObject*) a, (MatrixObject*) b, MatrixNumber_merge_add);
+    }
+    return unsupported_op(a, b, '+');
+}
+
+static PyObject* MatrixNumber_subtract(PyObject *a, PyObject *b) {
+    if (QMatrix_Check(a) && QMatrix_Check(b)) {
+        return MatrixNumber_merge((MatrixObject*) a, (MatrixObject*) b, MatrixNumber_merge_subtract);
+    }
+    return unsupported_op(a, b, '-');
+}
+
+static PyObject* MatrixNumber_multiply(PyObject *a, PyObject *b) {
+    if (QMatrix_Check(a) && QMatrix_Check(b)) {
+        return MatrixNumber_merge((MatrixObject*) a, (MatrixObject*) b, MatrixNumber_merge_multiply);
+    }
+    if (QMatrix_Check(a) && (PyLong_Check(b) || PyFloat_Check(b))) {
+        return MatrixNumber_scalar_multiply((MatrixObject*) a, b);
+    }
+    if (QMatrix_Check(b) && (PyLong_Check(a) || PyFloat_Check(a))) {
+        return MatrixNumber_scalar_multiply((MatrixObject*) b, a);
+    }
+    return unsupported_op(a, b, '*');
+}
+
+static PyObject* MatrixNumber_matrix_multiply(PyObject *a, PyObject *b) {
+    if (!QMatrix_Check(a) || !QMatrix_Check(b)) {
+        return unsupported_op(a, b, '@');
+    }
+    MatrixObject *mat1 = (MatrixObject*) a;
+    MatrixObject *mat2 = (MatrixObject*) b;
+
+    if (mat1->cols != mat2->rows) {
+        PyErr_Format(PyExc_ValueError, "Matrix 1 has dims (%ld, %ld) while Matrix 2 has dims (%ld, %ld); Incompatible for multiplication", 
+            mat1->rows, mat1->cols, mat2->rows, mat2->cols);
         return NULL;
     }
-    MatrixObject *res = QMatrix_new(self->rows, m->cols);
+    MatrixObject *res = QMatrix_new(mat1->rows, mat2->cols);
     if (!QMatrix_mallocData(res)) return NULL;
 
-    QMatrix_iterReset(self);
-    QMatrix_iterReset(m);
+    T *mat1_ptr = mat1->data;
+    T *mat2_ptr = mat2->data;
+    T *dot_ptr = res->data;
     for (long row_i = 0; row_i < res->rows; ++row_i) {
         long col_i = 0;
         while (1) {
-            *res->ptr = 0;
-            for (long i = 0; i < self->cols; ++i) {
-                *res->ptr += *self->ptr * *m->ptr;
-                ++self->ptr;
-                m->ptr += m->cols;
+            *dot_ptr = 0;
+            for (long i = 0; i < mat1->cols; ++i) {
+                *dot_ptr += *mat1_ptr * *mat2_ptr;
+                ++mat1_ptr;
+                mat2_ptr += mat2->cols;
             }
-            ++res->ptr;
+            ++dot_ptr;
             ++col_i;
-            m->ptr -= m->size - 1;
+            mat2_ptr -= mat2->size - 1;
             if (col_i == res->cols) break;
             // only rewind row when not at end of col
-            self->ptr -= self->cols;
+            mat1_ptr -= mat1->cols;
         }
-        m->ptr = m->data;
+        mat2_ptr = mat2->data;
     }
     return (PyObject*) res;
 }
