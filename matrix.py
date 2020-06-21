@@ -140,7 +140,10 @@ def matmulTest(dim):
     
 
 if __name__ == "__main__":
-    timer(matmulTest)
-
+    # timer(matmulTest)
+    dim = 5
+    mat1 = Matrix(rows=dim, cols=dim, data=[x for x in range(dim*dim)])
+    mat2 = Matrix(rows=dim, cols=dim, data=[x for x in range(dim*dim)])
+    (mat1 @ mat2).display(tabspace=5)
 
 

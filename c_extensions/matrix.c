@@ -20,9 +20,7 @@ typedef struct MatrixObject {
 } MatrixObject;
 
 
-/* Custom MatrixObject functions */
-
-
+/* Custom C MatrixObject functions */
 static void QMatrix_clean(MatrixObject* m) {
     // TRANSPOSE DEALLOC FRAMEWORK
     // if (self->transpose) {
@@ -134,7 +132,6 @@ static PyGetSetDef MatrixGetSetDefs[] = {
 static PyObject* Matrix_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
     MatrixObject *self = (MatrixObject*) type->tp_alloc(type, 0);
     if (!self) return PyErr_NoMemory();
-
     self->rows = 0;
     self->cols = 0;
     self->size = 0;
@@ -155,10 +152,26 @@ static int Matrix_init(MatrixObject *self, PyObject *args, PyObject *kwds) {
     PyObject *input_data = NULL;
 
     // Parse args
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "llO", kwlist, &self->rows, &self->cols, &input_data)) {
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OOO", kwlist, &self->Py_rows, &self->Py_cols, &input_data)) {
         PyErr_SetString(PyExc_ValueError, "unable to parse row and col args");
         return -1;
     }
+
+    // Load rows from PyObject
+    if (!PyLong_Check(self->Py_rows)) {
+        PyErr_Format(PyExc_TypeError, "rows argument must be of type 'int', received type '%s'", Py_TYPE(self->Py_rows)->tp_name);
+        return -1;
+    }
+    Py_INCREF(self->Py_rows);
+    self->rows = PyLong_AsLong(self->Py_rows);
+
+    // Load cols from PyObject
+    if (!PyLong_Check(self->Py_cols)) {
+        PyErr_Format(PyExc_TypeError, "cols argument must be of type 'int', received type '%s'", Py_TYPE(self->Py_cols)->tp_name);
+        return -1;
+    }
+    Py_INCREF(self->Py_cols);
+    self->cols = PyLong_AsLong(self->Py_cols);
 
     // Check that rows and cols are positive
     if (self->rows <= 0 || self->cols <= 0) {
@@ -166,16 +179,14 @@ static int Matrix_init(MatrixObject *self, PyObject *args, PyObject *kwds) {
         return -1;
     }
 
-    self->size = self->rows * self->cols;
-
     // Check that a list was received
     if (!PyList_Check(input_data)) {
         PyErr_Format(PyExc_TypeError, "cannot construct data from object of type '%s'", Py_TYPE(input_data)->tp_name);
         return -1;
     }
 
+    self->size = self->rows * self->cols;
     Py_ssize_t data_size = PyList_Size(input_data);
-
 
     // Check for invalid number of elements received
     if (self->size != data_size) {
@@ -185,7 +196,7 @@ static int Matrix_init(MatrixObject *self, PyObject *args, PyObject *kwds) {
 
     if (!QMatrix_mallocData(self)) return -1;
 
-    for (int i = 0; i < self->size; ++i) {
+    for (Py_ssize_t i = 0; i < self->size; ++i) {
         PyObject *item = PyList_GetItem(input_data, i);
         if (!PyLong_Check(item)) {
             PyErr_Format(PyExc_TypeError, "encounted non-numeric type in data: %s", Py_TYPE(item)->tp_name);
@@ -327,6 +338,7 @@ static PyObject* MatrixNumber_matrix_multiply(MatrixObject *self, PyObject *o) {
             ++res->ptr;
             QMatrix_MatMulNextDot(self, m);
         }
+        self->ptr += self->cols;  // can optimize
         QMatrix_iterReset(m);
     }
     return (PyObject*) res;

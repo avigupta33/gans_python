@@ -1,10 +1,10 @@
 from Quantum import Matrix
 
-def display(mat):
+def display(mat, tabspace=4):
     r, c, data = mat.rows, mat.cols, mat.data
     index = 0
     for row_i in range(r):
-        print('\t'.join(str(data[row_i * c + col_i]) for col_i in range(c)).expandtabs(3))
+        print('\t'.join(str(data[row_i * c + col_i]) for col_i in range(c)).expandtabs(tabspace))
 
 from time import time
 
@@ -24,16 +24,26 @@ def matmulTest(dim):
     
 
 if __name__ == "__main__":
-    timer(matmulTest)
+    # timer(matmulTest)
     # pass
-    # print(mat1.data)
-    # print(mat2.data)
-    # print("Addition:", (mat1 + mat2).data)
-    # print("Subtraction:", (mat1 - mat2).data)
-    # print("Multiply:", (mat1 * mat2).data)
-    # print(mat1.rows)
-    # print(mat1.cols)
-    # print(mat1)
+    dim = 5
+    mat1 = Matrix(rows=dim, cols=dim, data=[x for x in range(dim*dim)])
+    mat2 = Matrix(rows=dim, cols=dim, data=[x for x in range(dim*dim)])
+    # display(mat1)
+    # display(mat2)
+    # add = mat1 + mat2
+    # sub = mat1 - mat2
+    # mul = mat1 * mat2
+    matmul = mat1 @ mat2
+    # print("Addition:")
+    # display(add)
+    # print("Subtraction:")
+    # display(sub)
+    # print("Multiply:")
+    # display(mul)
+    # print("Matrix Multiply:")
+    display(matmul)
+    print(matmul.data)
 
     # (mat2 @ mat1)
 
