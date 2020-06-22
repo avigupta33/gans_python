@@ -1,4 +1,4 @@
-from Quantum import Matrix
+import Quantum as q
 
 def display(mat, tabspace=3):
     r, c, data = mat.rows, mat.cols, mat.data
@@ -15,8 +15,8 @@ def timer(func, iters=10):
     print(f"Mean execution time of {iters} runs: {mean}")
 
 def matmulTest(dim):
-    mat1 = Matrix(rows=dim, cols=dim, data=[x for x in range(dim*dim)])
-    mat2 = Matrix(rows=dim, cols=dim, data=[x for x in range(dim*dim)])
+    mat1 = q.Matrix(rows=dim, cols=dim, data=[x for x in range(dim*dim)])
+    mat2 = q.Matrix(rows=dim, cols=dim, data=[x for x in range(dim*dim)])
     ts = time()
     mat2 @ mat1
     te = time()
@@ -28,12 +28,13 @@ if __name__ == "__main__":
     # pass
     dim = 5
     # mat1 = Matrix(rows=dim, cols=dim, data=[x for x in range(1,1+dim*dim)])
-    mat2 = Matrix(rows=dim, cols=dim, data=[x for x in range(1,1+dim*dim)])
+    mat2 = q.Matrix(dim, dim, [x for x in range(1,1+dim*dim)])
     # display(mat1/10)
-    zeros = Matrix.zeros(mat2,1, 4)
+    zeros = q.zeros(1, 4)
     display(zeros)
+    print()
     # display(mat1)
-    # display(mat2)
+    display(mat2)
     # print(mat1* 8)
     # display(mat1*2)
     # display(mat1*1.5)

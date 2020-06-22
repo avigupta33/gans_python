@@ -3,6 +3,7 @@
 #define MATRIX_H
 
 #include <python3.7/Python.h>
+#include "random.c"
 #define QMatrix_Check(o) (Py_TYPE(o) == &MatrixType)
 
 typedef double T;
@@ -20,21 +21,22 @@ typedef struct MatrixObject {
     PyObject *Py_repr;      // PyUnicodeObject
 } MatrixObject;
 
+static RandomGenerator rg;
+
 static PyTypeObject MatrixType;
-
 static PyMethodDef MatrixMethodsDefs[];
-
 static PyGetSetDef MatrixGetSetDefs[];
-
 static PyNumberMethods MatrixNumberMethods;
-
+static PyMethodDef QuantumMethodDefs[];
 static PyModuleDef QuantumModule;
-
 PyMODINIT_FUNC PyInit_Quantum();
+
+/* Non-MatrixObject functions */
+static PyObject* zerosMatrix(PyObject *m, PyObject *args);
 
 /* Custom C-only functions */
 static MatrixObject* QMatrix_new(long rows, long cols);
-static void QMatrix_clean(MatrixObject *mat);
+static void cleanMatrix (MatrixObject *mat);
 static int mallocMatrixData(MatrixObject *mat);
 static PyObject* unsupported_op(PyObject *a, PyObject *b, const char op);
 static int loadMatrixDims(MatrixObject *self, PyObject *rows, PyObject *cols);
@@ -50,9 +52,6 @@ static PyObject* MatrixGet_rows(MatrixObject *self);
 static PyObject* MatrixGet_cols(MatrixObject *self);
 static PyObject* MatrixGet_data(MatrixObject *self);
 static PyObject* MatrixGet_transpose(MatrixObject *self);
-
-/* Class method functions */
-static PyObject* MatrixMethod_zeros(MatrixObject *cls, PyObject *args, PyObject *kwds);
 
 /* Numeric functions */
 static PyObject* MatrixNumber_add(PyObject *a, PyObject *b);

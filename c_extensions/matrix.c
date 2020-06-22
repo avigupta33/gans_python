@@ -2,8 +2,37 @@
 #include <python3.7/Python.h>
 #include "matrix.h"
 
+/* Non-MatrixObject functions */
+static PyObject* zerosMatrix(PyObject *m, PyObject *args) {
+    MatrixObject *self = (MatrixObject*) Matrix_new(&MatrixType, NULL, NULL);
+    static char *kwlist[] = {"rows", "cols", NULL};
+    PyObject *rows = NULL;
+    PyObject *cols = NULL;
+
+    // Parse args
+    if (!PyArg_ParseTuple(args, "OO", &rows, &cols)) {
+        PyErr_SetString(PyExc_ValueError, "unable to parse parameters");
+        return -1;
+    }
+
+
+    if (!loadMatrixDims(self, rows, cols)) return NULL;
+
+    self->data = (T*) calloc(self->size, sizeof(T));
+    if (!self->data) return PyErr_NoMemory();
+
+    return (PyObject*) self;
+}
+
+static PyMethodDef QuantumMethodDefs[] = {
+    {"zeros", (PyCFunction) zerosMatrix, METH_VARARGS, 
+     "Create a matrix of zeros"},
+    {NULL, NULL, 0, NULL}       /* Sentinal */
+};
+
+
 /* Custom C MatrixObject functions */
-static void QMatrix_clean(MatrixObject* mat) {
+static void cleanMatrix(MatrixObject* mat) {
     // TRANSPOSE DEALLOC FRAMEWORK
     // if (self->transpose) {
     //     // Has transpose
@@ -64,26 +93,9 @@ static int loadMatrixDims(MatrixObject *self, PyObject *rows, PyObject *cols) {
     return 1;
 }
 
+
 /* PyMethodDef functions */
-static PyObject* MatrixMethod_zeros(MatrixObject *fake, PyObject *args, PyObject *kwds) {
-    if (!fake) return NULL;
-    static char *kwlist[] = {"rows", "cols", NULL};
-    MatrixObject *self = (MatrixObject*) Matrix_new(&MatrixType, NULL, NULL);
-    PyObject *rows;
-    PyObject *cols;
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO", kwlist, &rows, &cols)) return NULL;
-
-    if (!loadMatrixDims(self, rows, cols)) return NULL;
-
-    self->data = (T*) calloc(self->size, sizeof(T));
-    if (!self->data) return PyErr_NoMemory();
-
-    return (PyObject*) self;
-}
-
 static PyMethodDef MatrixMethodsDefs[] = {
-    {"zeros", (PyCFunction) MatrixMethod_zeros, METH_VARARGS, 
-     "Return a new matrix of zeros"},
     {NULL}       /* Sentinal */
 };
 
@@ -170,17 +182,14 @@ static PyObject* Matrix_new(PyTypeObject *type, PyObject *args, PyObject *kwds) 
 }
 
 static int Matrix_init(MatrixObject *self, PyObject *args, PyObject *kwds) {
-    QMatrix_clean(self);
+    cleanMatrix(self);
     static char *kwlist[] = {"rows", "cols", "data", NULL};
     PyObject *input_data = NULL;
     PyObject *rows = NULL;
     PyObject *cols = NULL;
 
     // Parse args
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OOO", kwlist, &rows, &cols, &input_data)) {
-        PyErr_SetString(PyExc_ValueError, "unable to parse parameters");
-        return -1;
-    }
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OOO", kwlist, &rows, &cols, &input_data)) return -1;
     if (!loadMatrixDims(self, rows, cols)) return -1;
 
     // Check that a list was received
@@ -211,7 +220,7 @@ static int Matrix_init(MatrixObject *self, PyObject *args, PyObject *kwds) {
 }
 
 static void Matrix_dealloc(MatrixObject *self) {
-    QMatrix_clean(self);
+    cleanMatrix(self);
     Py_TYPE(self)->tp_free((PyObject*) self);
 }
 
@@ -239,7 +248,8 @@ static PyTypeObject MatrixType = {
     .tp_dealloc = (destructor) Matrix_dealloc,
     .tp_methods = MatrixMethodsDefs,
     .tp_repr = (reprfunc) Matrix_repr,
-    .tp_getset = MatrixGetSetDefs
+    .tp_getset = MatrixGetSetDefs,
+    .tp_as_number = &MatrixNumberMethods,
 };
 
 
@@ -254,7 +264,7 @@ static MatrixObject* QMatrix_new(long rows, long cols) {
 
 static PyObject* unsupported_op(PyObject *a, PyObject *b, const char op) {
     PyErr_Format(PyExc_TypeError, "unsupported operand type(s) for %c: '%s' and '%s'", op, Py_TYPE(a)->tp_name, Py_TYPE(b)->tp_name);
-    return NULL;
+    return Py_NotImplemented;
 }
 
 static PyObject* MatrixNumber_merge(MatrixObject *mat1, MatrixObject *mat2, compfunc compress) {
@@ -404,7 +414,7 @@ static PyObject* MatrixNumber_matrix_multiply(PyObject *a, PyObject *b) {
             ++col_i;
             mat2_ptr -= mat2->size - 1;
             if (col_i == res->cols) break;
-            // only rewind row when not at end of col
+            // only rewind row when not at end of res cols
             mat1_ptr -= mat1->cols;
         }
         mat2_ptr = mat2->data;
@@ -416,8 +426,8 @@ static PyNumberMethods MatrixNumberMethods = {
     .nb_add = (binaryfunc) MatrixNumber_add,
     .nb_subtract = (binaryfunc) MatrixNumber_subtract,
     .nb_multiply = (binaryfunc) MatrixNumber_multiply,
-    .nb_matrix_multiply = (binaryfunc) MatrixNumber_matrix_multiply,
     .nb_true_divide = (binaryfunc) MatrixNumber_divide,
+    .nb_matrix_multiply = (binaryfunc) MatrixNumber_matrix_multiply,
 };
 
 
@@ -427,13 +437,12 @@ static PyModuleDef QuantumModule = {
     .m_name = "Quantum Module",
     .m_doc = "#4145",
     .m_size = -1,
+    .m_methods = QuantumMethodDefs,
 };
 
 
 PyMODINIT_FUNC PyInit_Quantum() {
-    // Any methods that needs to typecheck if something is a MatrixType
-    // needs to be added here (and not in the construction of MatrixType)
-    MatrixType.tp_as_number = &MatrixNumberMethods;
+    // MatrixType.tp_as_number = &MatrixNumberMethods;
     if (PyType_Ready(&MatrixType) < 0) return NULL;
 
     PyObject *module = PyModule_Create(&QuantumModule);
