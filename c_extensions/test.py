@@ -27,9 +27,11 @@ if __name__ == "__main__":
     # timer(matmulTest)
     # pass
     dim = 5
-    mat1 = Matrix(rows=dim, cols=dim, data=[x for x in range(dim*dim)])
-    # print(mat1.T)
-    mat2 = Matrix(rows=dim, cols=dim, data=[x for x in range(dim*dim)])
+    # mat1 = Matrix(rows=dim, cols=dim, data=[x for x in range(1,1+dim*dim)])
+    mat2 = Matrix(rows=dim, cols=dim, data=[x for x in range(1,1+dim*dim)])
+    # display(mat1/10)
+    zeros = Matrix.zeros(mat2,1, 4)
+    display(zeros)
     # display(mat1)
     # display(mat2)
     # print(mat1* 8)
@@ -44,12 +46,16 @@ if __name__ == "__main__":
     # matmul = mat1 @ mat2
     # print("Addition:")
     # display(add)
+    # print()
     # print("Subtraction:")
     # display(sub)
+    # print()
     # print("Multiply:")
     # display(mul)
+    # print()
     # print("Matrix Multiply:")
     # display(matmul)
+    # print()
 
     # (mat2 @ mat1)
 
