@@ -1,18 +1,19 @@
 from Quantum import *
+from time import time
 
-# I really don't want to make this in C
+
 def display(mat, tabspace=3):
     for row_i in range(mat.rows):
         print('\t'.join(str(mat.data[row_i * mat.cols + col_i]) for col_i in range(mat.cols)).expandtabs(tabspace))
     print()
 
-from time import time
 
 def timer(func, iters=10):
     dim = 100
     mean = sum(func(dim) for _ in range(iters))/iters
     print(f"C ({dim},{dim}) @ ({dim},{dim})")
     print(f"Mean execution time of {iters} runs: {mean}")
+
 
 def matmulTest(dim):
     mat1 = Matrix.array(rows=dim, cols=dim, data=[x for x in range(10000)])
@@ -99,7 +100,7 @@ def demo():
 
 
 if __name__ == "__main__":
-    # demo()
+    demo()
     timer(matmulTest, iters=100)
 
 
