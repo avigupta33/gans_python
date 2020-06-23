@@ -98,9 +98,9 @@ def demo():
     print("Matrix Multiply:")
     display(matmul)
 
-    relud = tanh_backwards(matFromUniform)
-    print("ReLU of uniform")
-    display(relud)
+    activated = tanh_forwards(matFromUniform)
+    print("Activated of uniform")
+    display(activated)
 
 
 if __name__ == "__main__":

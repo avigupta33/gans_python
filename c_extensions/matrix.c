@@ -594,6 +594,14 @@ static PyNumberMethods MatrixNumberMethods = {
 
 
 /* QuantumMethodDef functions */
+static PyObject* Quantum_sigmoid_forwards(PyObject *self, PyObject *const *objs, Py_ssize_t nargs) {
+    return activation(objs[0], sigmoid_forwards);
+}
+
+static PyObject* Quantum_sigmoid_backwards(PyObject *self, PyObject *const *objs, Py_ssize_t nargs) {
+    return activation(objs[0], sigmoid_backwards);
+}
+
 static PyObject* Quantum_relu_forwards(PyObject *self, PyObject *const *objs, Py_ssize_t nargs) {
     return activation(objs[0], relu_forwards);
 }
@@ -619,17 +627,21 @@ static PyObject* Quantum_tanh_backwards(PyObject *self, PyObject *const *objs, P
 }
 
 static PyMethodDef QuantumMethodDefs[] = {
-    {"relu_forwards", (_PyCFunctionFast) Quantum_relu_forwards, METH_FASTCALL, 
+    {"sigmoid_forwards", (PyCFunction) Quantum_sigmoid_forwards, METH_FASTCALL, 
+     "Activate a matrix with sigmoid"},
+    {"sigmoid_backwards", (PyCFunction) Quantum_sigmoid_backwards, METH_FASTCALL, 
+     "Deactivate a matrix with sigmoid"},
+    {"relu_forwards", (PyCFunction) Quantum_relu_forwards, METH_FASTCALL, 
      "Activate a matrix with ReLU"},
-    {"relu_backwards", (_PyCFunctionFast) Quantum_relu_backwards, METH_FASTCALL, 
+    {"relu_backwards", (PyCFunction) Quantum_relu_backwards, METH_FASTCALL, 
      "Deactivate a matrix with ReLU"},
-    {"leakyrelu_forwards", (_PyCFunctionFast) Quantum_leakyrelu_forwards, METH_FASTCALL, 
+    {"leakyrelu_forwards", (PyCFunction) Quantum_leakyrelu_forwards, METH_FASTCALL, 
      "Activate a matrix with Leaky ReLU"},
-    {"leakyrelu_backwards", (_PyCFunctionFast) Quantum_leakyrelu_backwards, METH_FASTCALL, 
+    {"leakyrelu_backwards", (PyCFunction) Quantum_leakyrelu_backwards, METH_FASTCALL, 
      "Deactivate a matrix with Leaky ReLU"},
-    {"tanh_forwards", (_PyCFunctionFast) Quantum_tanh_forwards, METH_FASTCALL, 
+    {"tanh_forwards", (PyCFunction) Quantum_tanh_forwards, METH_FASTCALL, 
      "Activate aith Tanh"},
-    {"tanh_backwards", (_PyCFunctionFast) Quantum_tanh_backwards, METH_FASTCALL, 
+    {"tanh_backwards", (PyCFunction) Quantum_tanh_backwards, METH_FASTCALL, 
      "Activate aith Tanh"},
     {NULL, NULL, 0, NULL}
 };
@@ -653,6 +665,16 @@ static PyObject* activation(PyObject *o, void(*map)(T*,T*)) {
     return (PyObject*) res;
 }
 
+static inline void sigmoid_forwards(T *x, T *y) {
+    *y = 1.0 / (1.0 + exp(-*x));
+}
+
+static inline void sigmoid_backwards(T *dy, T *dx) {
+    double sig;
+    sigmoid_forwards(dy, &sig);
+    *dx = sig * (1.0 - sig);
+}
+
 static inline void relu_forwards(T *x, T *y) {
     *y = *x <= 0 ? 0 : *x;
 }
@@ -674,7 +696,6 @@ static inline void tanh_forwards(T *x, T *y) {
 }
 
 static inline void tanh_backwards(T *dy, T *dx) {
-    // 1 - tanh^2(x)
     double tanhdy = tanh(*dy);
     *dx = 1.0 - (tanhdy * tanhdy);
 }

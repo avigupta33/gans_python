@@ -21,7 +21,6 @@ typedef struct MatrixObject {
     PyObject *Py_repr;      // PyUnicodeObject
 } MatrixObject;
 
-
 static RandomGenerator rg;
 
 static PyTypeObject MatrixType;
@@ -76,6 +75,8 @@ static PyObject* MatrixNumber_scalar_multiply(MatrixObject *mat, PyObject *scala
 static PyObject* MatrixNumber_scalar_divide(MatrixObject *mat, PyObject *scalar);
 
 /* Quantum method functions */
+static PyObject* Quantum_sigmoid_forwards(PyObject *self, PyObject *const *objs, Py_ssize_t nargs);
+static PyObject* Quantum_sigmoid_backwards(PyObject *self, PyObject *const *objs, Py_ssize_t nargs);
 static PyObject* Quantum_relu_forwards(PyObject *self, PyObject *const *objs, Py_ssize_t nargs);
 static PyObject* Quantum_relu_backwards(PyObject *self, PyObject *const *objs, Py_ssize_t nargs);
 static PyObject* Quantum_leakyrelu_forwards(PyObject *self, PyObject *const *objs, Py_ssize_t nargs);
@@ -85,6 +86,8 @@ static PyObject* Quantum_tanh_backwards(PyObject *self, PyObject *const *objs, P
 
 /* Quantum helper functions */
 static PyObject* activation(PyObject *o, void(*map)(T*,T*));
+static inline void sigmoid_forwards(T *x, T *y);
+static inline void sigmoid_backwards(T *dy, T *dx);
 static inline void relu_forwards(T *x, T *y);
 static inline void relu_backwards(T *dy, T *dx);
 static inline void leakyrelu_forwards(T *x, T *y);
