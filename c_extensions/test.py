@@ -36,7 +36,7 @@ if __name__ == "__main__":
     # display(mat1)
     # fives = q.fill(4, 1, 5)
     # display(fives)
-    uniform = q.uniform(rows=10,cols=1,lower_bound=-1,upper_bound=9)
+    uniform = q.uniform(10,1,0,1)
     display(uniform)
     # print(mat1* 8)
     # display(mat1*2)

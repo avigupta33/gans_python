@@ -5,6 +5,7 @@
 #include <python3.7/Python.h>
 #include "random.c"
 #define QMatrix_Check(o) (Py_TYPE(o) == &MatrixType)
+#define CLEAR_MATRIX_FIELD(field) {Py_DECREF(field); field = NULL;}
 
 typedef double T;
 typedef int(*compfunc)(T*, T*, T*, Py_ssize_t);
@@ -21,7 +22,7 @@ typedef struct MatrixObject {
     PyObject *Py_repr;      // PyUnicodeObject
 } MatrixObject;
 
-static RandomGenerator *rg;
+static RandomGenerator rg;
 
 static PyTypeObject MatrixType;
 static PyMethodDef MatrixMethodsDefs[];
@@ -32,8 +33,8 @@ static PyModuleDef QuantumModule;
 PyMODINIT_FUNC PyInit_Quantum();
 
 /* Non-MatrixObject functions */
-static PyObject* fillMatrix(PyObject *m, PyObject *args, PyObject *kwds);
 static PyObject* zerosMatrix(PyObject *m, PyObject *args, PyObject *kwds);
+static PyObject* fillMatrix(PyObject *m, PyObject *args, PyObject *kwds);
 static PyObject* gaussMatrix(PyObject *m, PyObject *args, PyObject *kwds);
 static PyObject* uniformMatrix(PyObject *m, PyObject *args, PyObject *kwds);
 
