@@ -17,7 +17,7 @@ typedef struct MatrixObject {
     PyObject *transpose;    // MatrixObject
     PyObject *Py_rows;      // PyLongObject
     PyObject *Py_cols;      // PyLongObject
-    PyObject *Py_data;      // PyTupleObject, so it's immutable and Avi can't mess it up
+    PyObject *Py_data;      // PyTupleObject (immutable to allow lazy construction)
     PyObject *Py_repr;      // PyUnicodeObject
 } MatrixObject;
 
@@ -34,13 +34,14 @@ PyMODINIT_FUNC PyInit_Quantum();
 /* Non-MatrixObject functions */
 static PyObject* zerosMatrix(PyObject *m, PyObject *args, PyObject *kwds);
 static PyObject* fillMatrix(PyObject *m, PyObject *args, PyObject *kwds);
+static PyObject* arrayMatrix(PyObject *m, PyObject *args, PyObject *kwds);
 static PyObject* gaussMatrix(PyObject *m, PyObject *args, PyObject *kwds);
 static PyObject* uniformMatrix(PyObject *m, PyObject *args, PyObject *kwds);
 
 /* Custom C-only functions */
 static MatrixObject* freshMatrix(long rows, long cols);
 static int mallocMatrixData(MatrixObject *mat); // mallocs data and returns true on success, false on failure
-static PyObject* unsupported_op(PyObject *a, PyObject *b, const char op); // sets err flag and returns NULL
+static PyObject* unsupportedOperation(PyObject *a, PyObject *b, const char op); // sets err flag and returns NULL
 static int loadMatrixDims(MatrixObject *self, PyObject *rows, PyObject *cols); // INCREFS rows/cols
 
 /* Type functions */
