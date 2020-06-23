@@ -103,29 +103,6 @@ static MatrixObject* freshMatrix(long rows, long cols) {
     return self;
 }
 
-static void cleanMatrix(MatrixObject* mat) {
-    // TRANSPOSE DEALLOC FRAMEWORK
-    // if (self->transpose) {
-    //     // Has transpose
-    //     if (self->transpose->data != self->data) {
-    //         // self data isn't shared with transpose
-    //         Py_DECREF(self->Py_data);
-    //         free(self->data);
-    //     }
-    //         // Tell transpose to forget about me
-    // } else {
-    //     // No transpose
-    //     Py_DECREF(self->Py_rows);
-    //     Py_DECREF(self->Py_cols);
-    // }
-    if (mat->data) free(mat->data);
-    if (mat->transpose) CLEAR_MATRIX_FIELD(mat->transpose)
-    if (mat->Py_rows) CLEAR_MATRIX_FIELD(mat->Py_rows)
-    if (mat->Py_cols) CLEAR_MATRIX_FIELD(mat->Py_cols)
-    if (mat->Py_data) CLEAR_MATRIX_FIELD(mat->Py_data)
-    if (mat->Py_repr) CLEAR_MATRIX_FIELD(mat->Py_repr)
-}
-
 static int mallocMatrixData(MatrixObject *mat) {
     mat->data = (T*) malloc(sizeof(T) * mat->size);
     if (!mat->data) {
@@ -271,7 +248,7 @@ static PyObject* Matrix_new(PyTypeObject *type, PyObject *args, PyObject *kwds) 
 }
 
 static int Matrix_init(MatrixObject *self, PyObject *args, PyObject *kwds) {
-    cleanMatrix(self);
+    Matrix_clear((PyObject*) self);
     static char *kwlist[] = {"rows", "cols", "data", NULL};
     PyObject *input_data = NULL;
     PyObject *rows = NULL;
@@ -309,7 +286,8 @@ static int Matrix_init(MatrixObject *self, PyObject *args, PyObject *kwds) {
 }
 
 static void Matrix_dealloc(MatrixObject *self) {
-    cleanMatrix(self);
+    PyObject_GC_UnTrack(self);
+    Matrix_clear((PyObject*) self);
     Py_TYPE(self)->tp_free((PyObject*) self);
 }
 
@@ -325,13 +303,28 @@ static PyObject* Matrix_repr(MatrixObject *self, PyObject *Py_UNUSED(ignored)) {
     return self->Py_repr;
 }
 
+static void Matrix_clear(PyObject* o) {
+    MatrixObject *mat = (MatrixObject*) o;
+    if (mat->data) free(mat->data);
+    Py_CLEAR(mat->transpose);
+    Py_CLEAR(mat->Py_rows);
+    Py_CLEAR(mat->Py_cols);
+    Py_CLEAR(mat->Py_data);
+    Py_CLEAR(mat->Py_repr);
+}
+
+static int Matrix_traverse(MatrixObject *self, visitproc visit, void *arg) {
+    Py_VISIT(self->transpose);
+    return 0;
+}
+
 static PyTypeObject MatrixType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "Quantum.Matrix",
     .tp_doc = "Matrix class implemented in C",
     .tp_basicsize = sizeof(MatrixObject),
     .tp_itemsize = 0,
-    .tp_flags = Py_TPFLAGS_DEFAULT,
+    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
     .tp_new = Matrix_new,
     .tp_init = (initproc) Matrix_init,
     .tp_dealloc = (destructor) Matrix_dealloc,
@@ -339,6 +332,8 @@ static PyTypeObject MatrixType = {
     .tp_repr = (reprfunc) Matrix_repr,
     .tp_getset = MatrixGetSetDefs,
     .tp_as_number = &MatrixNumberMethods,
+    .tp_clear = (inquiry) Matrix_clear,
+    .tp_traverse = (traverseproc) Matrix_traverse,
 };
 
 

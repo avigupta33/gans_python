@@ -5,7 +5,6 @@
 #include <python3.7/Python.h>
 #include "random.c"
 #define QMatrix_Check(o) (Py_TYPE(o) == &MatrixType)
-#define CLEAR_MATRIX_FIELD(field) {Py_DECREF(field); field = NULL;}
 
 typedef double T;
 typedef int(*compfunc)(T*, T*, T*, Py_ssize_t);
@@ -40,7 +39,6 @@ static PyObject* uniformMatrix(PyObject *m, PyObject *args, PyObject *kwds);
 
 /* Custom C-only functions */
 static MatrixObject* freshMatrix(long rows, long cols);
-static void cleanMatrix (MatrixObject *mat); // frees data and DECREFS PyObject fields
 static int mallocMatrixData(MatrixObject *mat); // mallocs data and returns true on success, false on failure
 static PyObject* unsupported_op(PyObject *a, PyObject *b, const char op); // sets err flag and returns NULL
 static int loadMatrixDims(MatrixObject *self, PyObject *rows, PyObject *cols); // INCREFS rows/cols
@@ -50,6 +48,8 @@ static void Matrix_dealloc(MatrixObject *self);
 static PyObject* Matrix_repr(MatrixObject *self, PyObject *Py_UNUSED(ignored));
 static int Matrix_init(MatrixObject *self, PyObject *args, PyObject *kwds);
 static PyObject* Matrix_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
+static void Matrix_clear (PyObject *mat);
+static int Matrix_traverse(MatrixObject *self, visitproc visit, void *arg);
 
 /* Get Set functions */
 static PyObject* MatrixGet_rows(MatrixObject *self);
