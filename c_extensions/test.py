@@ -1,4 +1,5 @@
 import Quantum as q
+from Quantum import *
 
 def display(mat, tabspace=3):
     r, c, data = mat.rows, mat.cols, mat.data
@@ -36,7 +37,10 @@ if __name__ == "__main__":
     # display(mat1)
     # fives = q.fill(4, 1, 5)
     # display(fives)
-    uniform = q.uniform(10,1,0,1)
+    gauss = Matrix.gauss(rows=5, cols=1, mu=0, sigma=1)
+    display(gauss)
+    print()
+    uniform = Matrix.uniform(rows=5, cols=1, lower_bound=0, upper_bound=1)
     display(uniform)
     # print(mat1* 8)
     # display(mat1*2)

@@ -93,18 +93,6 @@ static PyObject* uniformMatrix(PyObject *m, PyObject *args, PyObject *kwds) {
     return (PyObject*) self;
 }
 
-static PyMethodDef QuantumMethodDefs[] = {
-    {"zeros", (PyCFunction) zerosMatrix, METH_VARARGS | METH_KEYWORDS, 
-     "Get a matrix filled with zeros"},
-    {"fill", (PyCFunction) fillMatrix, METH_VARARGS | METH_KEYWORDS, 
-     "Get a matrix filled with constant scalar value"},
-    {"gauss", (PyCFunction) gaussMatrix, METH_VARARGS | METH_KEYWORDS, 
-     "Get a matrix filled with random numbers from a gaussian distribution"},
-    {"uniform", (PyCFunction) uniformMatrix, METH_VARARGS | METH_KEYWORDS, 
-     "Get a matrix filled with uniformally distributed random numbers between bounds"},
-    {NULL, NULL, 0, NULL}       /* Sentinal */
-};
-
 
 /* Custom C MatrixObject functions */
 static MatrixObject* freshMatrix(long rows, long cols) {
@@ -184,7 +172,15 @@ static int loadMatrixDims(MatrixObject *self, PyObject *rows, PyObject *cols) {
 
 /* PyMethodDef functions */
 static PyMethodDef MatrixMethodsDefs[] = {
-    {NULL}       /* Sentinal */
+    {"zeros", (PyCFunction) zerosMatrix, METH_CLASS | METH_VARARGS | METH_KEYWORDS, 
+     "Get a matrix filled with zeros"},
+    {"fill", (PyCFunction) fillMatrix, METH_CLASS | METH_VARARGS | METH_KEYWORDS, 
+     "Get a matrix filled with constant scalar value"},
+    {"gauss", (PyCFunction) gaussMatrix, METH_CLASS | METH_VARARGS | METH_KEYWORDS, 
+     "Get a matrix filled with random numbers from a gaussian distribution"},
+    {"uniform", (PyCFunction) uniformMatrix, METH_CLASS | METH_VARARGS | METH_KEYWORDS, 
+     "Get a matrix filled with uniformally distributed random numbers between bounds"},
+    {NULL, NULL, 0, NULL}       /* Sentinal */
 };
 
 
@@ -530,7 +526,6 @@ static PyModuleDef QuantumModule = {
     .m_name = "Quantum Module",
     .m_doc = "#4145",
     .m_size = -1,
-    .m_methods = QuantumMethodDefs,
 };
 
 

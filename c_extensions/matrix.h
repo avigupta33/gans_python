@@ -22,13 +22,13 @@ typedef struct MatrixObject {
     PyObject *Py_repr;      // PyUnicodeObject
 } MatrixObject;
 
+
 static RandomGenerator rg;
 
 static PyTypeObject MatrixType;
 static PyMethodDef MatrixMethodsDefs[];
 static PyGetSetDef MatrixGetSetDefs[];
 static PyNumberMethods MatrixNumberMethods;
-static PyMethodDef QuantumMethodDefs[];
 static PyModuleDef QuantumModule;
 PyMODINIT_FUNC PyInit_Quantum();
 
