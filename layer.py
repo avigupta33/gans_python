@@ -26,9 +26,7 @@ class Layer:
         '''Only works on column vectors for speed purposes'''
         return (lambda vector, *argv:
             Vector(rows=vector.rows,
-                   data=[func(x, *argv) for x in vector.unordered_data]
-            )
-        )
+                   data=[func(x, *argv) for x in vector.unordered_data]))
 
 
 class FCLayer(Layer):
@@ -72,6 +70,7 @@ class FCLayer(Layer):
         outputs: Vector = self.activate(self.post_mapping)
         return outputs
 
+
     def backwards(self, output_error: Vector) -> Vector:
         deactivated_output_error = self.deactivate(output_error)
 
@@ -81,9 +80,11 @@ class FCLayer(Layer):
 
         return err_from_inputs, err_from_weights, err_from_biases
 
+
     def update(self, weight_update: Vector, bias_update: Vector) -> None:
         self.weights -= weight_update
         self.biases -= bias_update
+
 
     class ReLU(Activator):
 
