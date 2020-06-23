@@ -1,5 +1,6 @@
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <math.h>
 
 /* 2 * pi */
@@ -17,10 +18,15 @@ static void RandomGenerator_init(RandomGenerator *rg) {
 }
 
 static double uniform() {
-    return random() / RAND_MAX;
+    return random() / (double) RAND_MAX;
 }
 
-static double gauss(RandomGenerator *rg, double mu, double sigma) {
+static double uniformInRange(const double lower_bound, const double upper_bound) {
+    if (upper_bound < lower_bound) return 0;
+    return uniform() * (upper_bound - lower_bound) + lower_bound;
+}
+
+static double gauss(RandomGenerator *rg, const double mu, const double sigma) {
     /*
         Source:
         https://github.com/python/cpython/blob/master/Lib/random.py

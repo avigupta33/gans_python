@@ -3,18 +3,17 @@
 #include "matrix.h"
 
 /* Non-MatrixObject functions */
-static PyObject* zerosMatrix(PyObject *m, PyObject *args) {
+static PyObject* zerosMatrix(PyObject *m, PyObject *args, PyObject *kwds) {
     MatrixObject *self = (MatrixObject*) Matrix_new(&MatrixType, NULL, NULL);
     static char *kwlist[] = {"rows", "cols", NULL};
     PyObject *rows = NULL;
     PyObject *cols = NULL;
 
     // Parse args
-    if (!PyArg_ParseTuple(args, "OO", &rows, &cols)) {
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO", kwlist, &rows, &cols)) {
         PyErr_SetString(PyExc_ValueError, "unable to parse parameters");
-        return -1;
+        return NULL;
     }
-
 
     if (!loadMatrixDims(self, rows, cols)) return NULL;
 
@@ -24,9 +23,80 @@ static PyObject* zerosMatrix(PyObject *m, PyObject *args) {
     return (PyObject*) self;
 }
 
+static PyObject* fillMatrix(PyObject *m, PyObject *args, PyObject *kwds) {
+    MatrixObject *self = (MatrixObject*) Matrix_new(&MatrixType, NULL, NULL);
+    static char *kwlist[] = {"rows", "cols", "val", NULL};
+    PyObject *rows = NULL;
+    PyObject *cols = NULL;
+    double val = 0;
+
+    // Parse args
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OOd", kwlist, &rows, &cols, &val)) return NULL;
+    if (!loadMatrixDims(self, rows, cols)) return NULL;
+
+    self->data = (T*) malloc(sizeof(T) * self->size);
+    if (!self->data) return PyErr_NoMemory();
+
+    for (Py_ssize_t i = 0; i < self->size; ++i) {
+        self->data[i] = val;
+    }
+
+    return (PyObject*) self;
+}
+
+static PyObject* gaussMatrix(PyObject *m, PyObject *args, PyObject *kwds) {
+    MatrixObject *self = (MatrixObject*) Matrix_new(&MatrixType, NULL, NULL);
+    static char *kwlist[] = {"rows", "cols", "mu", "sigma", NULL};
+    PyObject *rows = NULL;
+    PyObject *cols = NULL;
+    double mu = 0;
+    double sigma = 0;
+
+    // Parse args
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OOdd", kwlist, &rows, &cols, &mu, &sigma)) return NULL;
+    if (!loadMatrixDims(self, rows, cols)) return NULL;
+
+    self->data = (T*) malloc(sizeof(T) * self->size);
+    if (!self->data) return PyErr_NoMemory();
+
+    for (Py_ssize_t i = 0; i < self->size; ++i) {
+        self->data[i] = gauss(rg, mu, sigma);
+    }
+
+    return (PyObject*) self;
+}
+
+static PyObject* uniformMatrix(PyObject *m, PyObject *args, PyObject *kwds) {
+    MatrixObject *self = (MatrixObject*) Matrix_new(&MatrixType, NULL, NULL);
+    static char *kwlist[] = {"rows", "cols", "lower_bound", "upper_bound", NULL};
+    PyObject *rows = NULL;
+    PyObject *cols = NULL;
+    double lower_bound = 0;
+    double upper_bound = 0;
+
+    // Parse args
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OOdd", kwlist, &rows, &cols, &lower_bound, &upper_bound)) return NULL;
+    if (!loadMatrixDims(self, rows, cols)) return NULL;
+
+    self->data = (T*) malloc(sizeof(T) * self->size);
+    if (!self->data) return PyErr_NoMemory();
+
+    for (Py_ssize_t i = 0; i < self->size; ++i) {
+        self->data[i] = uniformInRange(lower_bound, upper_bound);
+    }
+
+    return (PyObject*) self;
+}
+
 static PyMethodDef QuantumMethodDefs[] = {
-    {"zeros", (PyCFunction) zerosMatrix, METH_VARARGS, 
-     "Create a matrix of zeros"},
+    {"zeros", (PyCFunction) zerosMatrix, METH_VARARGS | METH_KEYWORDS, 
+     "Get a matrix filled with zeros"},
+    {"fill", (PyCFunction) fillMatrix, METH_VARARGS | METH_KEYWORDS, 
+     "Get a matrix filled with constant scalar value"},
+    {"gauss", (PyCFunction) gaussMatrix, METH_VARARGS | METH_KEYWORDS, 
+     "Get a matrix filled with random numbers from a gaussian distribution"},
+    {"uniform", (PyCFunction) uniformMatrix, METH_VARARGS | METH_KEYWORDS, 
+     "Get a matrix filled with uniformally distributed random numbers between bounds"},
     {NULL, NULL, 0, NULL}       /* Sentinal */
 };
 
@@ -254,7 +324,7 @@ static PyTypeObject MatrixType = {
 
 
 /* PyNumberMethods functions */
-static MatrixObject* QMatrix_new(long rows, long cols) {
+static MatrixObject* freshMatrix(long rows, long cols) {
     MatrixObject *self = (MatrixObject*) Matrix_new(&MatrixType, NULL, NULL);
     self->rows = rows;
     self->cols = cols;
@@ -272,7 +342,7 @@ static PyObject* MatrixNumber_merge(MatrixObject *mat1, MatrixObject *mat2, comp
         PyErr_SetString(PyExc_ValueError, "matrices are not the same shape");
         return NULL;
     }
-    MatrixObject *res = QMatrix_new(mat1->rows, mat1->cols);
+    MatrixObject *res = freshMatrix(mat1->rows, mat1->cols);
     if (!mallocMatrixData(res)) return NULL;
     if (!compress(mat1->data, mat2->data, res->data, mat1->size)) return NULL;
     return (PyObject*) res;
@@ -324,7 +394,7 @@ static int MatrixNumber_merge_divide(T *a, T *b, T *res, const Py_ssize_t size) 
 
 static PyObject* MatrixNumber_scalar_multiply(MatrixObject *mat, PyObject *scalar) {
     double k = PyFloat_AsDouble(scalar);
-    MatrixObject *res = QMatrix_new(mat->rows, mat->cols);
+    MatrixObject *res = freshMatrix(mat->rows, mat->cols);
     if (!mallocMatrixData(res)) return NULL;
     for (Py_ssize_t i = 0; i < mat->size; ++i) {
         res->data[i] = mat->data[i] * k;
@@ -338,7 +408,7 @@ static PyObject* MatrixNumber_scalar_divide(MatrixObject *mat, PyObject *scalar)
         PyErr_SetString(PyExc_ZeroDivisionError, "cannot divide matrix values by zero");
         return NULL;
     }
-    MatrixObject *res = QMatrix_new(mat->rows, mat->cols);
+    MatrixObject *res = freshMatrix(mat->rows, mat->cols);
     if (!mallocMatrixData(res)) return NULL;
     for (Py_ssize_t i = 0; i < mat->size; ++i) {
         res->data[i] = mat->data[i] / k;
@@ -395,7 +465,7 @@ static PyObject* MatrixNumber_matrix_multiply(PyObject *a, PyObject *b) {
             mat1->rows, mat1->cols, mat2->rows, mat2->cols);
         return NULL;
     }
-    MatrixObject *res = QMatrix_new(mat1->rows, mat2->cols);
+    MatrixObject *res = freshMatrix(mat1->rows, mat2->cols);
     if (!mallocMatrixData(res)) return NULL;
 
     T *mat1_ptr = mat1->data;
@@ -442,6 +512,9 @@ static PyModuleDef QuantumModule = {
 
 
 PyMODINIT_FUNC PyInit_Quantum() {
+    rg = (RandomGenerator*) malloc(sizeof(RandomGenerator));
+    if (!rg) return NULL;
+    RandomGenerator_init(rg);
     // MatrixType.tp_as_number = &MatrixNumberMethods;
     if (PyType_Ready(&MatrixType) < 0) return NULL;
 

@@ -26,15 +26,18 @@ def matmulTest(dim):
 if __name__ == "__main__":
     # timer(matmulTest)
     # pass
-    dim = 5
+    # dim = 5
     # mat1 = Matrix(rows=dim, cols=dim, data=[x for x in range(1,1+dim*dim)])
-    mat2 = q.Matrix(dim, dim, [x for x in range(1,1+dim*dim)])
+    # mat2 = q.Matrix(dim, dim, [x for x in range(1,1+dim*dim)])
     # display(mat1/10)
-    zeros = q.zeros(1, 4)
-    display(zeros)
-    print()
+    # zeros = q.zeros(cols=1, rows=4)
+    # display(zeros)
+    # print()
     # display(mat1)
-    display(mat2)
+    # fives = q.fill(4, 1, 5)
+    # display(fives)
+    uniform = q.uniform(rows=10,cols=1,lower_bound=-1,upper_bound=9)
+    display(uniform)
     # print(mat1* 8)
     # display(mat1*2)
     # display(mat1*1.5)

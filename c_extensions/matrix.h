@@ -21,7 +21,7 @@ typedef struct MatrixObject {
     PyObject *Py_repr;      // PyUnicodeObject
 } MatrixObject;
 
-static RandomGenerator rg;
+static RandomGenerator *rg;
 
 static PyTypeObject MatrixType;
 static PyMethodDef MatrixMethodsDefs[];
@@ -32,14 +32,17 @@ static PyModuleDef QuantumModule;
 PyMODINIT_FUNC PyInit_Quantum();
 
 /* Non-MatrixObject functions */
-static PyObject* zerosMatrix(PyObject *m, PyObject *args);
+static PyObject* fillMatrix(PyObject *m, PyObject *args, PyObject *kwds);
+static PyObject* zerosMatrix(PyObject *m, PyObject *args, PyObject *kwds);
+static PyObject* gaussMatrix(PyObject *m, PyObject *args, PyObject *kwds);
+static PyObject* uniformMatrix(PyObject *m, PyObject *args, PyObject *kwds);
 
 /* Custom C-only functions */
-static MatrixObject* QMatrix_new(long rows, long cols);
-static void cleanMatrix (MatrixObject *mat);
-static int mallocMatrixData(MatrixObject *mat);
-static PyObject* unsupported_op(PyObject *a, PyObject *b, const char op);
-static int loadMatrixDims(MatrixObject *self, PyObject *rows, PyObject *cols);
+static MatrixObject* freshMatrix(long rows, long cols);
+static void cleanMatrix (MatrixObject *mat); // frees data and DECREFS PyObject fields
+static int mallocMatrixData(MatrixObject *mat); // mallocs data and returns true on success, false on failure
+static PyObject* unsupported_op(PyObject *a, PyObject *b, const char op); // sets err flag and returns NULL
+static int loadMatrixDims(MatrixObject *self, PyObject *rows, PyObject *cols); // INCREFS rows/cols
 
 /* Type functions */
 static void Matrix_dealloc(MatrixObject *self);
