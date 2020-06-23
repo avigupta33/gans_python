@@ -135,9 +135,11 @@ static PyObject* uniformMatrix(PyObject *m, PyObject *args, PyObject *kwds) {
 /* Custom C MatrixObject functions */
 static MatrixObject* freshMatrix(long rows, long cols) {
     MatrixObject *self = (MatrixObject*) Matrix_new(&MatrixType, NULL, NULL);
+    if (!self) return NULL;
     self->rows = rows;
     self->cols = cols;
     self->size = rows * cols;
+    if (!mallocMatrixData(self)) return NULL;
     return self;
 }
 
@@ -185,7 +187,7 @@ static int loadMatrixDims(MatrixObject *self, PyObject *rows, PyObject *cols) {
     return 1;
 }
 
-/* PyMethodDef functions */
+/* MatrixMethodDef functions */
 static PyMethodDef MatrixMethodsDefs[] = {
     {"zeros", (PyCFunction) zerosMatrix, METH_CLASS | METH_VARARGS | METH_KEYWORDS, 
      "Get a matrix filled with zeros"},
@@ -395,7 +397,7 @@ static int Matrix_traverse(MatrixObject *self, visitproc visit, void *arg) {
 
 static PyTypeObject MatrixType = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = "Quantum.Matrix",
+    .tp_name = "Matrix",
     .tp_doc = "Matrix class implemented in C",
     .tp_basicsize = sizeof(MatrixObject),
     .tp_itemsize = 0,
@@ -419,6 +421,7 @@ static PyObject* MatrixNumber_merge(MatrixObject *mat1, MatrixObject *mat2, comp
         return NULL;
     }
     MatrixObject *res = freshMatrix(mat1->rows, mat1->cols);
+    if (!res) return NULL;
     if (!mallocMatrixData(res)) return NULL;
     if (!compress(mat1->data, mat2->data, res->data, mat1->size)) return NULL;
     return (PyObject*) res;
@@ -471,7 +474,7 @@ static int MatrixNumber_merge_divide(T *a, T *b, T *res, const Py_ssize_t size) 
 static PyObject* MatrixNumber_scalar_multiply(MatrixObject *mat, PyObject *scalar) {
     double k = PyFloat_AsDouble(scalar);
     MatrixObject *res = freshMatrix(mat->rows, mat->cols);
-    if (!mallocMatrixData(res)) return NULL;
+    if (!res) return NULL;
     for (Py_ssize_t i = 0; i < mat->size; ++i) {
         res->data[i] = mat->data[i] * k;
     }
@@ -485,7 +488,7 @@ static PyObject* MatrixNumber_scalar_divide(MatrixObject *mat, PyObject *scalar)
         return NULL;
     }
     MatrixObject *res = freshMatrix(mat->rows, mat->cols);
-    if (!mallocMatrixData(res)) return NULL;
+    if (!res) return NULL;
     for (Py_ssize_t i = 0; i < mat->size; ++i) {
         res->data[i] = mat->data[i] / k;
     }
@@ -554,7 +557,7 @@ static PyObject* MatrixNumber_matrix_multiply(PyObject *a, PyObject *b) {
         return NULL;
     }
     MatrixObject *res = freshMatrix(mat1->rows, mat2->cols);
-    if (!mallocMatrixData(res)) return NULL;
+    if (!res) return NULL;
 
     T *mat1_ptr = mat1->data;
     T *mat2_ptr = mat2->data;
@@ -590,12 +593,99 @@ static PyNumberMethods MatrixNumberMethods = {
 };
 
 
+/* QuantumMethodDef functions */
+static PyObject* Quantum_relu_forwards(PyObject *self, PyObject *const *objs, Py_ssize_t nargs) {
+    return activation(objs[0], relu_forwards);
+}
+
+static PyObject* Quantum_relu_backwards(PyObject *self, PyObject *const *objs, Py_ssize_t nargs) {
+    return activation(objs[0], relu_backwards);
+}
+
+static PyObject* Quantum_leakyrelu_forwards(PyObject *self, PyObject *const *objs, Py_ssize_t nargs) {
+    return activation(objs[0], leakyrelu_forwards);
+}
+
+static PyObject* Quantum_leakyrelu_backwards(PyObject *self, PyObject *const *objs, Py_ssize_t nargs) {
+    return activation(objs[0], leakyrelu_backwards);
+}
+
+static PyObject* Quantum_tanh_forwards(PyObject *self, PyObject *const *objs, Py_ssize_t nargs) {
+    return activation(objs[0], tanh_forwards);
+}
+
+static PyObject* Quantum_tanh_backwards(PyObject *self, PyObject *const *objs, Py_ssize_t nargs) {
+    return activation(objs[0], tanh_backwards);
+}
+
+static PyMethodDef QuantumMethodDefs[] = {
+    {"relu_forwards", (_PyCFunctionFast) Quantum_relu_forwards, METH_FASTCALL, 
+     "Activate a matrix with ReLU"},
+    {"relu_backwards", (_PyCFunctionFast) Quantum_relu_backwards, METH_FASTCALL, 
+     "Deactivate a matrix with ReLU"},
+    {"leakyrelu_forwards", (_PyCFunctionFast) Quantum_leakyrelu_forwards, METH_FASTCALL, 
+     "Activate a matrix with Leaky ReLU"},
+    {"leakyrelu_backwards", (_PyCFunctionFast) Quantum_leakyrelu_backwards, METH_FASTCALL, 
+     "Deactivate a matrix with Leaky ReLU"},
+    {"tanh_forwards", (_PyCFunctionFast) Quantum_tanh_forwards, METH_FASTCALL, 
+     "Activate aith Tanh"},
+    {"tanh_backwards", (_PyCFunctionFast) Quantum_tanh_backwards, METH_FASTCALL, 
+     "Activate aith Tanh"},
+    {NULL, NULL, 0, NULL}
+};
+
+static PyObject* activation(PyObject *o, void(*map)(T*,T*)) {
+    if (!QMatrix_Check(o)) {
+        PyErr_Format(PyExc_TypeError, "expected '%s' object, but received '%s' object", MatrixType.tp_name, Py_TYPE(o)->tp_name);
+        return NULL;
+    }
+    MatrixObject *mat = (MatrixObject*) o;
+    MatrixObject *res = freshMatrix(mat->rows, mat->cols);
+    if (!res) return NULL;
+    T *res_ptr = res->data;
+    T *mat_ptr = mat->data;
+    for (long i = 0; i < res->size; ++i) {
+        map(mat_ptr, res_ptr);
+        ++res_ptr;
+        ++mat_ptr;
+    }
+    Py_INCREF(res);
+    return (PyObject*) res;
+}
+
+static inline void relu_forwards(T *x, T *y) {
+    *y = *x <= 0 ? 0 : *x;
+}
+
+static inline void relu_backwards(T *dy, T *dx) {
+    *dx = *dy <= 0 ? 0 : 1;
+}
+
+static inline void leakyrelu_forwards(T *x, T *y) {
+    *y = *x <= 0 ? *x * 0.01 : *x;
+}
+
+static inline void leakyrelu_backwards(T *dy, T *dx) {
+    *dx = *dy <= 0 ? 0.01 : 1;
+}
+
+static inline void tanh_forwards(T *x, T *y) {
+    *y = tanh(*x);
+}
+
+static inline void tanh_backwards(T *dy, T *dx) {
+    // 1 - tanh^2(x)
+    double tanhdy = tanh(*dy);
+    *dx = 1.0 - (tanhdy * tanhdy);
+}
+
 /* Module definition with methods */
 static PyModuleDef QuantumModule = {
     PyModuleDef_HEAD_INIT,
     .m_name = "Quantum Module",
     .m_doc = "#4145",
     .m_size = -1,
+    .m_methods = QuantumMethodDefs,
 };
 
 

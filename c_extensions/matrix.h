@@ -28,6 +28,7 @@ static PyTypeObject MatrixType;
 static PyMethodDef MatrixMethodsDefs[];
 static PyGetSetDef MatrixGetSetDefs[];
 static PyNumberMethods MatrixNumberMethods;
+static PyMethodDef QuantumMethodDefs[];
 static PyModuleDef QuantumModule;
 PyMODINIT_FUNC PyInit_Quantum();
 
@@ -74,6 +75,22 @@ static int MatrixNumber_merge_divide(T *a, T *b, T *res, const Py_ssize_t size);
 static PyObject* MatrixNumber_scalar_multiply(MatrixObject *mat, PyObject *scalar);
 static PyObject* MatrixNumber_scalar_divide(MatrixObject *mat, PyObject *scalar);
 
+/* Quantum method functions */
+static PyObject* Quantum_relu_forwards(PyObject *self, PyObject *const *objs, Py_ssize_t nargs);
+static PyObject* Quantum_relu_backwards(PyObject *self, PyObject *const *objs, Py_ssize_t nargs);
+static PyObject* Quantum_leakyrelu_forwards(PyObject *self, PyObject *const *objs, Py_ssize_t nargs);
+static PyObject* Quantum_leakyrelu_backwards(PyObject *self, PyObject *const *objs, Py_ssize_t nargs);
+static PyObject* Quantum_tanh_forwards(PyObject *self, PyObject *const *objs, Py_ssize_t nargs);
+static PyObject* Quantum_tanh_backwards(PyObject *self, PyObject *const *objs, Py_ssize_t nargs);
+
+/* Quantum helper functions */
+static PyObject* activation(PyObject *o, void(*map)(T*,T*));
+static inline void relu_forwards(T *x, T *y);
+static inline void relu_backwards(T *dy, T *dx);
+static inline void leakyrelu_forwards(T *x, T *y);
+static inline void leakyrelu_backwards(T *dy, T *dx);
+static inline void tanh_forwards(T *x, T *y);
+static inline void tanh_backwards(T *dy, T *dx);
 
 #endif /* MATRIX_H */
 

@@ -56,7 +56,7 @@ def demo():
 
     # Make a matrix from uniform random distribution
     print("Matrix from uniform")
-    matFromUniform = Matrix.uniform(rows=3, cols=3, lower_bound=-10, upper_bound=10)
+    matFromUniform = Matrix.uniform(rows=3, cols=3, lower_bound=-1, upper_bound=1)
     display(matFromUniform)
 
     # timer(matmulTest)
@@ -97,6 +97,10 @@ def demo():
     display(mul)
     print("Matrix Multiply:")
     display(matmul)
+
+    relud = tanh_backwards(matFromUniform)
+    print("ReLU of uniform")
+    display(relud)
 
 
 if __name__ == "__main__":
