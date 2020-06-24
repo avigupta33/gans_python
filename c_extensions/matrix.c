@@ -640,9 +640,9 @@ static PyMethodDef QuantumMethodDefs[] = {
     {"leakyrelu_backwards", (PyCFunction) Quantum_leakyrelu_backwards, METH_FASTCALL, 
      "Deactivate a matrix with Leaky ReLU"},
     {"tanh_forwards", (PyCFunction) Quantum_tanh_forwards, METH_FASTCALL, 
-     "Activate aith Tanh"},
+     "Activate with Tanh"},
     {"tanh_backwards", (PyCFunction) Quantum_tanh_backwards, METH_FASTCALL, 
-     "Activate aith Tanh"},
+     "Activate with Tanh"},
     {NULL, NULL, 0, NULL}
 };
 
