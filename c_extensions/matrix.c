@@ -28,18 +28,29 @@ static PyObject* zerosMatrix(PyObject *m, PyObject *args, PyObject *kwds) {
 static PyObject* fillMatrix(PyObject *m, PyObject *args, PyObject *kwds) {
     MatrixObject *self = (MatrixObject*) Matrix_new(&MatrixType, NULL, NULL);
     static char *kwlist[] = {"rows", "cols", "val", NULL};
-    PyObject *rows = NULL;
-    PyObject *cols = NULL;
-    double val = 0;
+    PyObject *py_rows = NULL;
+    PyObject *py_cols = NULL;
+    PyObject *py_val = 0;
 
     // Parse args
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OOd", kwlist, &rows, &cols, &val)) return NULL;
-    if (!loadMatrixDims(self, rows, cols)) return NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OOO", kwlist, &py_rows, &py_cols, &py_val)) return NULL;
+    if (!loadMatrixDims(self, py_rows, py_cols)) return NULL;
+
+    double val;
+    if (PyLong_Check(py_val)) {
+        val = PyLong_AsDouble(py_val);
+    } else if (PyFloat_Check(py_val)) {
+        val = PyFloat_AsDouble(py_val);
+    } else {
+        PyErr_Format(PyExc_NotImplementedError, "received unsupported matrix type: '%s'", Py_TYPE(py_val)->tp_name);
+        return NULL;
+    }
 
     self->data = (T*) malloc(sizeof(T) * self->size);
     if (!self->data) return PyErr_NoMemory();
 
     for (Py_ssize_t i = 0; i < self->size; ++i) {
+
         self->data[i] = val;
     }
 
@@ -50,21 +61,21 @@ static PyObject* fillMatrix(PyObject *m, PyObject *args, PyObject *kwds) {
 static PyObject* arrayMatrix(PyObject *m, PyObject *args, PyObject *kwds) {
     MatrixObject *self = (MatrixObject*) Matrix_new(&MatrixType, NULL, NULL);
     static char *kwlist[] = {"rows", "cols", "data", NULL};
-    PyObject *input_data = NULL;
-    PyObject *rows = NULL;
-    PyObject *cols = NULL;
+    PyObject *py_data = NULL;
+    PyObject *py_rows = NULL;
+    PyObject *py_cols = NULL;
 
     // Parse args
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OOO", kwlist, &rows, &cols, &input_data)) return NULL;
-    if (!loadMatrixDims(self, rows, cols)) return NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OOO", kwlist, &py_rows, &py_cols, &py_data)) return NULL;
+    if (!loadMatrixDims(self, py_rows, py_cols)) return NULL;
 
     // Check that a list was received
-    if (!PyList_Check(input_data)) {
-        PyErr_Format(PyExc_TypeError, "cannot construct data from object of type '%s'", Py_TYPE(input_data)->tp_name);
+    if (!PyList_Check(py_data)) {
+        PyErr_Format(PyExc_TypeError, "cannot construct data from object of type '%s'", Py_TYPE(py_data)->tp_name);
         return NULL;
     }
 
-    Py_ssize_t data_size = PyList_Size(input_data);
+    Py_ssize_t data_size = PyList_Size(py_data);
 
     // Check for invalid number of elements received
     if (self->size != data_size) {
@@ -75,12 +86,15 @@ static PyObject* arrayMatrix(PyObject *m, PyObject *args, PyObject *kwds) {
     if (!mallocMatrixData(self)) return NULL;
 
     for (Py_ssize_t i = 0; i < self->size; ++i) {
-        PyObject *item = PyList_GetItem(input_data, i);
-        if (!PyLong_Check(item)) {
-            PyErr_Format(PyExc_TypeError, "encounted non-numeric type in data: %s", Py_TYPE(item)->tp_name);
+        PyObject *item = PyList_GetItem(py_data, i);
+        if (PyLong_Check(item)) {
+            self->data[i] = PyLong_AsDouble(item);
+        } else if (PyFloat_Check(item)) {
+            self->data[i] = PyFloat_AsDouble(item);
+        } else {
+            PyErr_Format(PyExc_NotImplementedError, "received unsupported matrix type: '%s'", Py_TYPE(item)->tp_name);
             return NULL;
         }
-        self->data[i] = PyFloat_AsDouble(item);
     }
     return (PyObject*) self;
 }
@@ -158,10 +172,9 @@ static PyObject* unsupportedOperation(PyObject *a, PyObject *b, const char op) {
 }
 
 static int loadMatrixDims(MatrixObject *self, PyObject *rows, PyObject *cols) {
-    // printf("(%ld, %ld)", PyLong_AsLong(rows), PyLong_AsLong(cols));
     // Load rows from PyObject
     if (!PyLong_Check(rows)) {
-        PyErr_Format(PyExc_TypeError, "rows argument must be of type 'int', received type '%s'", Py_TYPE(self->Py_rows)->tp_name);
+        PyErr_Format(PyExc_TypeError, "rows argument must be of type 'int', received type '%s'", Py_TYPE(rows)->tp_name);
         return 0;
     }
     self->Py_rows = rows;
@@ -169,7 +182,7 @@ static int loadMatrixDims(MatrixObject *self, PyObject *rows, PyObject *cols) {
 
     // Load cols from PyObject
     if (!PyLong_Check(cols)) {
-        PyErr_Format(PyExc_TypeError, "cols argument must be of type 'int', received type '%s'", Py_TYPE(self->Py_cols)->tp_name);
+        PyErr_Format(PyExc_TypeError, "cols argument must be of type 'int', received type '%s'", Py_TYPE(cols)->tp_name);
         return 0;
     }
     self->Py_cols = cols;

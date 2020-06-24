@@ -5,6 +5,7 @@
 #include <python3.7/Python.h>
 #include "random.c"
 #define QMatrix_Check(o) (Py_TYPE(o) == &MatrixType)
+#define QNumeric_Check(o) (PyLong_Check(o) || PyFloat_Check(o))
 
 typedef double T;
 typedef int(*compfunc)(T*, T*, T*, Py_ssize_t);

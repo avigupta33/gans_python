@@ -94,10 +94,11 @@ def histogramDemo():
     plt.show()
 
 if __name__ == "__main__":
+    Matrix.array(1,1,[1.])
     # demo()
     # activationDemo()
     histogramDemo()
-    timer(matmulTest, iters=100)
+    # timer(matmulTest, iters=100)
 
 
 
