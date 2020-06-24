@@ -28,18 +28,29 @@ static PyObject* zerosMatrix(PyObject *m, PyObject *args, PyObject *kwds) {
 static PyObject* fillMatrix(PyObject *m, PyObject *args, PyObject *kwds) {
     MatrixObject *self = (MatrixObject*) Matrix_new(&MatrixType, NULL, NULL);
     static char *kwlist[] = {"rows", "cols", "val", NULL};
-    PyObject *rows = NULL;
-    PyObject *cols = NULL;
-    double val = 0;
+    PyObject *py_rows = NULL;
+    PyObject *py_cols = NULL;
+    PyObject *py_val = 0;
 
     // Parse args
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OOd", kwlist, &rows, &cols, &val)) return NULL;
-    if (!loadMatrixDims(self, rows, cols)) return NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OOO", kwlist, &py_rows, &py_cols, &py_val)) return NULL;
+    if (!loadMatrixDims(self, py_rows, py_cols)) return NULL;
+
+    double val;
+    if (PyLong_Check(py_val)) {
+        val = PyLong_AsDouble(py_val);
+    } else if (PyFloat_Check(py_val)) {
+        val = PyFloat_AsDouble(py_val);
+    } else {
+        PyErr_Format(PyExc_NotImplementedError, "received unsupported matrix type: '%s'", Py_TYPE(py_val)->tp_name);
+        return NULL;
+    }
 
     self->data = (T*) malloc(sizeof(T) * self->size);
     if (!self->data) return PyErr_NoMemory();
 
     for (Py_ssize_t i = 0; i < self->size; ++i) {
+
         self->data[i] = val;
     }
 
@@ -50,21 +61,21 @@ static PyObject* fillMatrix(PyObject *m, PyObject *args, PyObject *kwds) {
 static PyObject* arrayMatrix(PyObject *m, PyObject *args, PyObject *kwds) {
     MatrixObject *self = (MatrixObject*) Matrix_new(&MatrixType, NULL, NULL);
     static char *kwlist[] = {"rows", "cols", "data", NULL};
-    PyObject *input_data = NULL;
-    PyObject *rows = NULL;
-    PyObject *cols = NULL;
+    PyObject *py_data = NULL;
+    PyObject *py_rows = NULL;
+    PyObject *py_cols = NULL;
 
     // Parse args
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OOO", kwlist, &rows, &cols, &input_data)) return NULL;
-    if (!loadMatrixDims(self, rows, cols)) return NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OOO", kwlist, &py_rows, &py_cols, &py_data)) return NULL;
+    if (!loadMatrixDims(self, py_rows, py_cols)) return NULL;
 
     // Check that a list was received
-    if (!PyList_Check(input_data)) {
-        PyErr_Format(PyExc_TypeError, "cannot construct data from object of type '%s'", Py_TYPE(input_data)->tp_name);
+    if (!PyList_Check(py_data)) {
+        PyErr_Format(PyExc_TypeError, "cannot construct data from object of type '%s'", Py_TYPE(py_data)->tp_name);
         return NULL;
     }
 
-    Py_ssize_t data_size = PyList_Size(input_data);
+    Py_ssize_t data_size = PyList_Size(py_data);
 
     // Check for invalid number of elements received
     if (self->size != data_size) {
@@ -75,12 +86,15 @@ static PyObject* arrayMatrix(PyObject *m, PyObject *args, PyObject *kwds) {
     if (!mallocMatrixData(self)) return NULL;
 
     for (Py_ssize_t i = 0; i < self->size; ++i) {
-        PyObject *item = PyList_GetItem(input_data, i);
-        if (!PyLong_Check(item)) {
-            PyErr_Format(PyExc_TypeError, "encounted non-numeric type in data: %s", Py_TYPE(item)->tp_name);
+        PyObject *item = PyList_GetItem(py_data, i);
+        if (PyLong_Check(item)) {
+            self->data[i] = PyLong_AsDouble(item);
+        } else if (PyFloat_Check(item)) {
+            self->data[i] = PyFloat_AsDouble(item);
+        } else {
+            PyErr_Format(PyExc_NotImplementedError, "received unsupported matrix type: '%s'", Py_TYPE(item)->tp_name);
             return NULL;
         }
-        self->data[i] = PyFloat_AsDouble(item);
     }
     return (PyObject*) self;
 }
@@ -135,9 +149,11 @@ static PyObject* uniformMatrix(PyObject *m, PyObject *args, PyObject *kwds) {
 /* Custom C MatrixObject functions */
 static MatrixObject* freshMatrix(long rows, long cols) {
     MatrixObject *self = (MatrixObject*) Matrix_new(&MatrixType, NULL, NULL);
+    if (!self) return NULL;
     self->rows = rows;
     self->cols = cols;
     self->size = rows * cols;
+    if (!mallocMatrixData(self)) return NULL;
     return self;
 }
 
@@ -156,10 +172,9 @@ static PyObject* unsupportedOperation(PyObject *a, PyObject *b, const char op) {
 }
 
 static int loadMatrixDims(MatrixObject *self, PyObject *rows, PyObject *cols) {
-    // printf("(%ld, %ld)", PyLong_AsLong(rows), PyLong_AsLong(cols));
     // Load rows from PyObject
     if (!PyLong_Check(rows)) {
-        PyErr_Format(PyExc_TypeError, "rows argument must be of type 'int', received type '%s'", Py_TYPE(self->Py_rows)->tp_name);
+        PyErr_Format(PyExc_TypeError, "rows argument must be of type 'int', received type '%s'", Py_TYPE(rows)->tp_name);
         return 0;
     }
     self->Py_rows = rows;
@@ -167,7 +182,7 @@ static int loadMatrixDims(MatrixObject *self, PyObject *rows, PyObject *cols) {
 
     // Load cols from PyObject
     if (!PyLong_Check(cols)) {
-        PyErr_Format(PyExc_TypeError, "cols argument must be of type 'int', received type '%s'", Py_TYPE(self->Py_cols)->tp_name);
+        PyErr_Format(PyExc_TypeError, "cols argument must be of type 'int', received type '%s'", Py_TYPE(cols)->tp_name);
         return 0;
     }
     self->Py_cols = cols;
@@ -185,7 +200,7 @@ static int loadMatrixDims(MatrixObject *self, PyObject *rows, PyObject *cols) {
     return 1;
 }
 
-/* PyMethodDef functions */
+/* MatrixMethodDef functions */
 static PyMethodDef MatrixMethodsDefs[] = {
     {"zeros", (PyCFunction) zerosMatrix, METH_CLASS | METH_VARARGS | METH_KEYWORDS, 
      "Get a matrix filled with zeros"},
@@ -395,7 +410,7 @@ static int Matrix_traverse(MatrixObject *self, visitproc visit, void *arg) {
 
 static PyTypeObject MatrixType = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = "Quantum.Matrix",
+    .tp_name = "Matrix",
     .tp_doc = "Matrix class implemented in C",
     .tp_basicsize = sizeof(MatrixObject),
     .tp_itemsize = 0,
@@ -419,6 +434,7 @@ static PyObject* MatrixNumber_merge(MatrixObject *mat1, MatrixObject *mat2, comp
         return NULL;
     }
     MatrixObject *res = freshMatrix(mat1->rows, mat1->cols);
+    if (!res) return NULL;
     if (!mallocMatrixData(res)) return NULL;
     if (!compress(mat1->data, mat2->data, res->data, mat1->size)) return NULL;
     return (PyObject*) res;
@@ -471,7 +487,7 @@ static int MatrixNumber_merge_divide(T *a, T *b, T *res, const Py_ssize_t size) 
 static PyObject* MatrixNumber_scalar_multiply(MatrixObject *mat, PyObject *scalar) {
     double k = PyFloat_AsDouble(scalar);
     MatrixObject *res = freshMatrix(mat->rows, mat->cols);
-    if (!mallocMatrixData(res)) return NULL;
+    if (!res) return NULL;
     for (Py_ssize_t i = 0; i < mat->size; ++i) {
         res->data[i] = mat->data[i] * k;
     }
@@ -485,7 +501,7 @@ static PyObject* MatrixNumber_scalar_divide(MatrixObject *mat, PyObject *scalar)
         return NULL;
     }
     MatrixObject *res = freshMatrix(mat->rows, mat->cols);
-    if (!mallocMatrixData(res)) return NULL;
+    if (!res) return NULL;
     for (Py_ssize_t i = 0; i < mat->size; ++i) {
         res->data[i] = mat->data[i] / k;
     }
@@ -554,7 +570,7 @@ static PyObject* MatrixNumber_matrix_multiply(PyObject *a, PyObject *b) {
         return NULL;
     }
     MatrixObject *res = freshMatrix(mat1->rows, mat2->cols);
-    if (!mallocMatrixData(res)) return NULL;
+    if (!res) return NULL;
 
     T *mat1_ptr = mat1->data;
     T *mat2_ptr = mat2->data;
@@ -590,12 +606,120 @@ static PyNumberMethods MatrixNumberMethods = {
 };
 
 
+/* QuantumMethodDef functions */
+static PyObject* Quantum_sigmoid_forwards(PyObject *self, PyObject *const *objs, Py_ssize_t nargs) {
+    return activation(objs[0], sigmoid_forwards);
+}
+
+static PyObject* Quantum_sigmoid_backwards(PyObject *self, PyObject *const *objs, Py_ssize_t nargs) {
+    return activation(objs[0], sigmoid_backwards);
+}
+
+static PyObject* Quantum_relu_forwards(PyObject *self, PyObject *const *objs, Py_ssize_t nargs) {
+    return activation(objs[0], relu_forwards);
+}
+
+static PyObject* Quantum_relu_backwards(PyObject *self, PyObject *const *objs, Py_ssize_t nargs) {
+    return activation(objs[0], relu_backwards);
+}
+
+static PyObject* Quantum_leakyrelu_forwards(PyObject *self, PyObject *const *objs, Py_ssize_t nargs) {
+    return activation(objs[0], leakyrelu_forwards);
+}
+
+static PyObject* Quantum_leakyrelu_backwards(PyObject *self, PyObject *const *objs, Py_ssize_t nargs) {
+    return activation(objs[0], leakyrelu_backwards);
+}
+
+static PyObject* Quantum_tanh_forwards(PyObject *self, PyObject *const *objs, Py_ssize_t nargs) {
+    return activation(objs[0], tanh_forwards);
+}
+
+static PyObject* Quantum_tanh_backwards(PyObject *self, PyObject *const *objs, Py_ssize_t nargs) {
+    return activation(objs[0], tanh_backwards);
+}
+
+static PyMethodDef QuantumMethodDefs[] = {
+    {"sigmoid_forwards", (PyCFunction) Quantum_sigmoid_forwards, METH_FASTCALL, 
+     "Activate a matrix with sigmoid"},
+    {"sigmoid_backwards", (PyCFunction) Quantum_sigmoid_backwards, METH_FASTCALL, 
+     "Deactivate a matrix with sigmoid"},
+    {"relu_forwards", (PyCFunction) Quantum_relu_forwards, METH_FASTCALL, 
+     "Activate a matrix with ReLU"},
+    {"relu_backwards", (PyCFunction) Quantum_relu_backwards, METH_FASTCALL, 
+     "Deactivate a matrix with ReLU"},
+    {"leakyrelu_forwards", (PyCFunction) Quantum_leakyrelu_forwards, METH_FASTCALL, 
+     "Activate a matrix with Leaky ReLU"},
+    {"leakyrelu_backwards", (PyCFunction) Quantum_leakyrelu_backwards, METH_FASTCALL, 
+     "Deactivate a matrix with Leaky ReLU"},
+    {"tanh_forwards", (PyCFunction) Quantum_tanh_forwards, METH_FASTCALL, 
+     "Activate with Tanh"},
+    {"tanh_backwards", (PyCFunction) Quantum_tanh_backwards, METH_FASTCALL, 
+     "Activate with Tanh"},
+    {NULL, NULL, 0, NULL}
+};
+
+static PyObject* activation(PyObject *o, void(*map)(T*,T*)) {
+    if (!QMatrix_Check(o)) {
+        PyErr_Format(PyExc_TypeError, "expected '%s' object, but received '%s' object", MatrixType.tp_name, Py_TYPE(o)->tp_name);
+        return NULL;
+    }
+    MatrixObject *mat = (MatrixObject*) o;
+    MatrixObject *res = freshMatrix(mat->rows, mat->cols);
+    if (!res) return NULL;
+    T *res_ptr = res->data;
+    T *mat_ptr = mat->data;
+    for (long i = 0; i < res->size; ++i) {
+        map(mat_ptr, res_ptr);
+        ++res_ptr;
+        ++mat_ptr;
+    }
+    Py_INCREF(res);
+    return (PyObject*) res;
+}
+
+static inline void sigmoid_forwards(T *x, T *y) {
+    *y = 1.0 / (1.0 + exp(-*x));
+}
+
+static inline void sigmoid_backwards(T *dy, T *dx) {
+    double sig;
+    sigmoid_forwards(dy, &sig);
+    *dx = sig * (1.0 - sig);
+}
+
+static inline void relu_forwards(T *x, T *y) {
+    *y = *x <= 0 ? 0 : *x;
+}
+
+static inline void relu_backwards(T *dy, T *dx) {
+    *dx = *dy <= 0 ? 0 : 1;
+}
+
+static inline void leakyrelu_forwards(T *x, T *y) {
+    *y = *x <= 0 ? *x * 0.01 : *x;
+}
+
+static inline void leakyrelu_backwards(T *dy, T *dx) {
+    *dx = *dy <= 0 ? 0.01 : 1;
+}
+
+static inline void tanh_forwards(T *x, T *y) {
+    *y = tanh(*x);
+}
+
+static inline void tanh_backwards(T *dy, T *dx) {
+    double tanhdy = tanh(*dy);
+    *dx = 1.0 - (tanhdy * tanhdy);
+}
+
 /* Module definition with methods */
 static PyModuleDef QuantumModule = {
     PyModuleDef_HEAD_INIT,
     .m_name = "Quantum Module",
     .m_doc = "#4145",
     .m_size = -1,
+    .m_methods = QuantumMethodDefs,
 };
 
 

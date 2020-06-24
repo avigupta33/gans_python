@@ -1,4 +1,5 @@
 from Quantum import *
+import matplotlib.pyplot as plt
 from time import time
 
 
@@ -56,52 +57,48 @@ def demo():
 
     # Make a matrix from uniform random distribution
     print("Matrix from uniform")
-    matFromUniform = Matrix.uniform(rows=3, cols=3, lower_bound=-10, upper_bound=10)
+    matFromUniform = Matrix.uniform(rows=3, cols=3, lower_bound=-1, upper_bound=1)
     display(matFromUniform)
 
-    # timer(matmulTest)
-    # pass
-    # dim = 5
-    # mat1 = Matrix(rows=dim, cols=dim, data=[x for x in range(1,1+dim*dim)])
-    # display(mat1/10)
-    # twod = Matrix([[1,2],[3,4]])
-    # display(twod)
-    # print()
-    # zeros = Matrix.array(4, 4, [x for x in range(16)])
-    # display(zeros @ zeros.T)
-    # print()
-    # display(mat1)
-    # fives = q.fill(4, 1, 5)
-    # display(fives)
-    # gauss = Matrix.gauss(rows=5, cols=1, mu=0, sigma=1)
-    # display(gauss)
-    # print()
-    # uniform = Matrix.uniform(rows=5, cols=1, lower_bound=0, upper_bound=1)
-    # display(uniform)
-    # print(mat1* 8)
-    # display(mat1*2)
-    # display(mat1*1.5)
-    # display(2*mat1)
-    # display(1.5*mat1)
-
-
-    add = matFrom1D + matFrom2D
-    sub = matFrom1D - matFrom2D
-    mul = matFrom1D * matFrom2D
-    matmul = matFrom1D @ matFrom2D
     print("Addition:")
-    display(add)
+    display(matFrom1D + matFrom2D)
     print("Subtraction:")
-    display(sub)
+    display(matFrom1D - matFrom2D)
     print("Multiply:")
-    display(mul)
+    display(matFrom1D * matFrom2D)
     print("Matrix Multiply:")
-    display(matmul)
+    display(matFrom1D @ matFrom2D)
 
+    activated = tanh_forwards(matFromUniform)
+    print("Activated of uniform")
+    display(activated)
+
+
+def activationDemo():
+    upper_bound = 50
+    lower_bound = -upper_bound
+    x_points = list(range(lower_bound, upper_bound))
+    ranged = Matrix.array(rows=(upper_bound-lower_bound), cols=1, data=x_points)
+    activated = sigmoid_forwards(ranged)
+    plt.scatter(x_points, list(activated.data))
+    plt.show()
+
+
+def histogramDemo():
+    mat_gauss = Matrix.gauss(rows=1000000, cols=1, mu=0, sigma=0.2)
+    x_points = list(mat_gauss.data)
+    print("Made x_points")
+    plt.hist(x_points, density=True, bins=30)
+    plt.ylabel("Frequency")
+    plt.xlabel("Randomly generated number")
+    plt.show()
 
 if __name__ == "__main__":
-    demo()
-    timer(matmulTest, iters=100)
+    Matrix.array(1,1,[1.])
+    # demo()
+    # activationDemo()
+    histogramDemo()
+    # timer(matmulTest, iters=100)
 
 
 
