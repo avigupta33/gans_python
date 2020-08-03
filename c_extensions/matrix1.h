@@ -4,8 +4,8 @@
 
 #include <python3.7/Python.h>
 #include "random.c"
-#define QMatrix_Check(o) (Py_TYPE(o) == &MatrixType)
-#define QNumeric_Check(o) (PyLong_Check(o) || PyFloat_Check(o))
+#define Matrix_Check(obj) (Py_TYPE(obj) == &MatrixType)
+
 
 typedef double T;
 typedef int(*compfunc)(T*, T*, T*, Py_ssize_t);
@@ -33,38 +33,38 @@ static PyModuleDef QuantumModule;
 PyMODINIT_FUNC PyInit_Quantum();
 
 /* Non-MatrixObject functions */
-static PyObject* zerosMatrix(PyObject *m, PyObject *args, PyObject *kwds);
-static PyObject* fillMatrix(PyObject *m, PyObject *args, PyObject *kwds);
-static PyObject* arrayMatrix(PyObject *m, PyObject *args, PyObject *kwds);
-static PyObject* gaussMatrix(PyObject *m, PyObject *args, PyObject *kwds);
-static PyObject* uniformMatrix(PyObject *m, PyObject *args, PyObject *kwds);
+static PyObject* matrix_from_zeros(PyObject *m, PyObject *args, PyObject *kwds);
+static PyObject* matrix_from_value(PyObject *m, PyObject *args, PyObject *kwds);
+static PyObject* matrix_from_array(PyObject *m, PyObject *args, PyObject *kwds);
+static PyObject* matrix_from_gauss(PyObject *m, PyObject *args, PyObject *kwds);
+static PyObject* matrix_from_uniform(PyObject *m, PyObject *args, PyObject *kwds);
 
 /* Custom C-only functions */
 static MatrixObject* freshMatrix(long rows, long cols);
-static int mallocMatrixData(MatrixObject *mat); // mallocs data and returns true on success, false on failure
+static T* matrix_alloc_data(MatrixObject *mat); // mallocs data and returns true on success, false on failure
 static PyObject* unsupportedOperation(PyObject *a, PyObject *b, const char op); // sets err flag and returns NULL
-static int loadMatrixDims(MatrixObject *self, PyObject *rows, PyObject *cols); // INCREFS rows/cols
+static int matrix_load_dims(MatrixObject *self, PyObject *rows, PyObject *cols); // INCREFS rows/cols
 
 /* Type functions */
-static void Matrix_dealloc(MatrixObject *self);
-static PyObject* Matrix_repr(MatrixObject *self, PyObject *Py_UNUSED(ignored));
-static int Matrix_init(MatrixObject *self, PyObject *args, PyObject *kwds);
-static PyObject* Matrix_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
-static void Matrix_clear (PyObject *mat);
-static int Matrix_traverse(MatrixObject *self, visitproc visit, void *arg);
+static void matrix_dealloc(MatrixObject *self);
+static PyObject* matrix_repr(MatrixObject *self, PyObject *Py_UNUSED(ignored));
+static int matrix_init(MatrixObject *self, PyObject *args, PyObject *kwds);
+static PyObject* matrix_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
+static void matrix_clear (PyObject *mat);
+static int matrix_traverse(MatrixObject *self, visitproc visit, void *arg);
 
 /* Get Set functions */
-static PyObject* MatrixGet_rows(MatrixObject *self);
-static PyObject* MatrixGet_cols(MatrixObject *self);
-static PyObject* MatrixGet_data(MatrixObject *self);
-static PyObject* MatrixGet_transpose(MatrixObject *self);
+static PyObject* matrix_get_rows(MatrixObject *self);
+static PyObject* matrix_get_cols(MatrixObject *self);
+static PyObject* matrix_get_data(MatrixObject *self);
+static PyObject* matrix_get_transpose(MatrixObject *self);
 
 /* Numeric functions */
-static PyObject* MatrixNumber_add(PyObject *a, PyObject *b);
-static PyObject* MatrixNumber_subtract(PyObject *a, PyObject *b);
-static PyObject* MatrixNumber_multiply(PyObject *a, PyObject *b);
-static PyObject* MatrixNumber_divide(PyObject *a, PyObject *b);
-static PyObject* MatrixNumber_matrix_multiply(PyObject *a, PyObject *b);
+static PyObject* matrix_number_add(PyObject *obj1, PyObject *obj2);
+static PyObject* matrix_number_subtract(PyObject *obj1, PyObject *obj2);
+static PyObject* matrix_number_multiply(PyObject *obj1, PyObject *obj2);
+static PyObject* matrix_number_divide(PyObject *obj1, PyObject *obj2);
+static PyObject* matrix_number_matmul(PyObject *obj1, PyObject *obj2);
 
 /* Numeric helper functions */
 static PyObject* MatrixNumber_merge(MatrixObject *mat1, MatrixObject *mat2, compfunc compress);

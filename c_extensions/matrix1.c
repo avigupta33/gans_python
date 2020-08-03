@@ -1,77 +1,80 @@
 
 #include <python3.7/Python.h>
-#include "matrix.h"
+#include "matrix1.h"
 
 /* Non-MatrixObject functions */
-static PyObject* zerosMatrix(PyObject *m, PyObject *args, PyObject *kwds) {
-    MatrixObject *self = (MatrixObject*) Matrix_new(&MatrixType, NULL, NULL);
+static PyObject* matrix_from_zeros(PyObject *m, PyObject *args, PyObject *kwds) {
     static char *kwlist[] = {"rows", "cols", NULL};
-    PyObject *rows = NULL;
-    PyObject *cols = NULL;
+    PyObject *py_rows = NULL;
+    PyObject *py_cols = NULL;
 
-    // Parse args
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO", kwlist, &rows, &cols)) {
-        PyErr_SetString(PyExc_ValueError, "unable to parse parameters");
-        return NULL;
-    }
-    // printf("(%ld, %ld)", PyLong_AsLong(rows), PyLong_AsLong(cols));
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO", kwlist, 
+        &py_rows, 
+        &py_cols)) return NULL;
 
-    if (!loadMatrixDims(self, rows, cols)) return NULL;
-
+    MatrixObject *self = (MatrixObject*) matrix_new(&MatrixType, NULL, NULL);
+    if (!matrix_load_dims(self, py_rows, py_cols)) return NULL;
     self->data = (T*) calloc(self->size, sizeof(T));
     if (!self->data) return PyErr_NoMemory();
 
-    Py_INCREF(self);
     return (PyObject*) self;
 }
 
-static PyObject* fillMatrix(PyObject *m, PyObject *args, PyObject *kwds) {
-    MatrixObject *self = (MatrixObject*) Matrix_new(&MatrixType, NULL, NULL);
+static PyObject* matrix_from_value(PyObject *m, PyObject *args, PyObject *kwds) {
     static char *kwlist[] = {"rows", "cols", "val", NULL};
     PyObject *py_rows = NULL;
     PyObject *py_cols = NULL;
     PyObject *py_val = 0;
 
     // Parse args
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OOO", kwlist, &py_rows, &py_cols, &py_val)) return NULL;
-    if (!loadMatrixDims(self, py_rows, py_cols)) return NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OOO", kwlist, 
+        &py_rows, 
+        &py_cols, 
+        &py_val)) return NULL;
 
+    MatrixObject *self = (MatrixObject*) matrix_new(&MatrixType, NULL, NULL);
     double val;
     if (PyLong_Check(py_val)) {
         val = PyLong_AsDouble(py_val);
     } else if (PyFloat_Check(py_val)) {
         val = PyFloat_AsDouble(py_val);
     } else {
-        PyErr_Format(PyExc_NotImplementedError, "received unsupported matrix type: '%s'", Py_TYPE(py_val)->tp_name);
+        PyErr_Format(
+            PyExc_NotImplementedError, 
+            "received unsupported matrix value type: '%s'", 
+            Py_TYPE(py_val)->tp_name);
         return NULL;
     }
 
-    self->data = (T*) malloc(sizeof(T) * self->size);
-    if (!self->data) return PyErr_NoMemory();
+    if (!matrix_load_dims(self, py_rows, py_cols)) return NULL;
+    if (!matrix_alloc_data(self)) return NULL;
 
     for (Py_ssize_t i = 0; i < self->size; ++i) {
-
         self->data[i] = val;
     }
 
-    Py_INCREF(self);
     return (PyObject*) self;
 }
 
-static PyObject* arrayMatrix(PyObject *m, PyObject *args, PyObject *kwds) {
-    MatrixObject *self = (MatrixObject*) Matrix_new(&MatrixType, NULL, NULL);
-    static char *kwlist[] = {"rows", "cols", "data", NULL};
-    PyObject *py_data = NULL;
+static PyObject* matrix_from_array(PyObject *m, PyObject *args, PyObject *kwds) {
+    MatrixObject *self = (MatrixObject*) matrix_new(&MatrixType, NULL, NULL);
+    static char *kwlist[] = { "rows", "cols", "data", NULL };
     PyObject *py_rows = NULL;
     PyObject *py_cols = NULL;
+    PyObject *py_data = NULL;
 
-    // Parse args
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OOO", kwlist, &py_rows, &py_cols, &py_data)) return NULL;
-    if (!loadMatrixDims(self, py_rows, py_cols)) return NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OOO", kwlist, 
+        &py_rows, 
+        &py_cols, 
+        &py_data)) return NULL;
+        
+    if (!matrix_load_dims(self, py_rows, py_cols)) return NULL;
 
-    // Check that a list was received
     if (!PyList_Check(py_data)) {
-        PyErr_Format(PyExc_TypeError, "cannot construct data from object of type '%s'", Py_TYPE(py_data)->tp_name);
+        PyErr_Format(
+            PyExc_TypeError, 
+            "cannot construct data from object of type '%s'", 
+            Py_TYPE(py_data)->tp_name);
         return NULL;
     }
 
@@ -79,11 +82,15 @@ static PyObject* arrayMatrix(PyObject *m, PyObject *args, PyObject *kwds) {
 
     // Check for invalid number of elements received
     if (self->size != data_size) {
-        PyErr_Format(PyExc_ValueError, "expected %ld element(s) in data, but received %ld", self->size, data_size);
+        PyErr_Format(
+            PyExc_ValueError, 
+            "expected %ld element(s) in data, but received %ld", 
+            self->size, 
+            data_size);
         return NULL;
     }
 
-    if (!mallocMatrixData(self)) return NULL;
+    if (!matrix_alloc_data(self)) return NULL;
 
     for (Py_ssize_t i = 0; i < self->size; ++i) {
         PyObject *item = PyList_GetItem(py_data, i);
@@ -92,78 +99,79 @@ static PyObject* arrayMatrix(PyObject *m, PyObject *args, PyObject *kwds) {
         } else if (PyFloat_Check(item)) {
             self->data[i] = PyFloat_AsDouble(item);
         } else {
-            PyErr_Format(PyExc_NotImplementedError, "received unsupported matrix type: '%s'", Py_TYPE(item)->tp_name);
+            PyErr_Format(
+                PyExc_NotImplementedError, 
+                "received unsupported matrix type: '%s'", 
+                Py_TYPE(item)->tp_name);
             return NULL;
         }
     }
     return (PyObject*) self;
 }
 
-static PyObject* gaussMatrix(PyObject *m, PyObject *args, PyObject *kwds) {
-    MatrixObject *self = (MatrixObject*) Matrix_new(&MatrixType, NULL, NULL);
+static PyObject* matrix_from_gauss(PyObject *m, PyObject *args, PyObject *kwds) {
     static char *kwlist[] = {"rows", "cols", "mu", "sigma", NULL};
-    PyObject *rows = NULL;
-    PyObject *cols = NULL;
+    PyObject *py_rows = NULL;
+    PyObject *py_cols = NULL;
     double mu = 0;
     double sigma = 0;
 
-    // Parse args
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OOdd", kwlist, &rows, &cols, &mu, &sigma)) return NULL;
-    if (!loadMatrixDims(self, rows, cols)) return NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OOdd", kwlist, 
+        &py_rows, 
+        &py_cols, 
+        &mu, 
+        &sigma)) return NULL;
 
-    self->data = (T*) malloc(sizeof(T) * self->size);
-    if (!self->data) return PyErr_NoMemory();
+    MatrixObject *self = (MatrixObject*) matrix_new(&MatrixType, NULL, NULL);
+    if (!matrix_load_dims(self, py_rows, py_cols)) return NULL;
+    if (!matrix_alloc_data(self)) return NULL;
 
     for (Py_ssize_t i = 0; i < self->size; ++i) {
         self->data[i] = gauss(&rg, mu, sigma);
     }
-
-    Py_INCREF(self);
     return (PyObject*) self;
 }
 
-static PyObject* uniformMatrix(PyObject *m, PyObject *args, PyObject *kwds) {
-    MatrixObject *self = (MatrixObject*) Matrix_new(&MatrixType, NULL, NULL);
-    static char *kwlist[] = {"rows", "cols", "lower_bound", "upper_bound", NULL};
-    PyObject *rows = NULL;
-    PyObject *cols = NULL;
-    double lower_bound = 0;
-    double upper_bound = 0;
+static PyObject* matrix_from_uniform(PyObject *m, PyObject *args, PyObject *kwds) {
+    static char *kwlist[] = {"rows", "cols", "lower", "upper", NULL};
+    PyObject *py_rows = NULL;
+    PyObject *py_cols = NULL;
+    double lower = 0;
+    double upper = 0;
 
     // Parse args
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OOdd", kwlist, &rows, &cols, &lower_bound, &upper_bound)) return NULL;
-    if (!loadMatrixDims(self, rows, cols)) return NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OOdd", kwlist, 
+        &py_rows, 
+        &py_cols, 
+        &lower, 
+        &upper)) return NULL;
 
-    self->data = (T*) malloc(sizeof(T) * self->size);
-    if (!self->data) return PyErr_NoMemory();
+    MatrixObject *self = (MatrixObject*) matrix_new(&MatrixType, NULL, NULL);
+    if (!matrix_load_dims(self, py_rows, py_cols)) return NULL;
+    if (!matrix_alloc_data(self)) return NULL;
 
     for (Py_ssize_t i = 0; i < self->size; ++i) {
-        self->data[i] = uniformInRange(lower_bound, upper_bound);
+        self->data[i] = uniformInRange(lower, upper);
     }
-
-    Py_INCREF(self);
     return (PyObject*) self;
 }
 
 
 /* Custom C MatrixObject functions */
 static MatrixObject* freshMatrix(long rows, long cols) {
-    MatrixObject *self = (MatrixObject*) Matrix_new(&MatrixType, NULL, NULL);
+    MatrixObject *self = (MatrixObject*) matrix_new(&MatrixType, NULL, NULL);
     if (!self) return NULL;
     self->rows = rows;
     self->cols = cols;
     self->size = rows * cols;
-    if (!mallocMatrixData(self)) return NULL;
+    if (!matrix_alloc_data(self)) return NULL;
     return self;
 }
 
-static int mallocMatrixData(MatrixObject *mat) {
+static T* matrix_alloc_data(MatrixObject *mat) {
     mat->data = (T*) malloc(sizeof(T) * mat->size);
-    if (!mat->data) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    return 1;
+    if (!mat->data) PyErr_NoMemory();
+    return mat->data;
 }
 
 static PyObject* unsupportedOperation(PyObject *a, PyObject *b, const char op) {
@@ -171,8 +179,8 @@ static PyObject* unsupportedOperation(PyObject *a, PyObject *b, const char op) {
     return Py_NotImplemented;
 }
 
-static int loadMatrixDims(MatrixObject *self, PyObject *rows, PyObject *cols) {
-    // Load rows from PyObject
+static int matrix_load_dims(MatrixObject *self, PyObject *rows, PyObject *cols) {
+    // Loadmrows _load_dObject
     if (!PyLong_Check(rows)) {
         PyErr_Format(PyExc_TypeError, "rows argument must be of type 'int', received type '%s'", Py_TYPE(rows)->tp_name);
         return 0;
@@ -202,22 +210,22 @@ static int loadMatrixDims(MatrixObject *self, PyObject *rows, PyObject *cols) {
 
 /* MatrixMethodDef functions */
 static PyMethodDef MatrixMethodsDefs[] = {
-    {"zeros", (PyCFunction) zerosMatrix, METH_CLASS | METH_VARARGS | METH_KEYWORDS, 
+    {"zeros", (PyCFunction) matrix_from_zeros, METH_CLASS | METH_VARARGS | METH_KEYWORDS, 
      "Get a matrix filled with zeros"},
-    {"fill", (PyCFunction) fillMatrix, METH_CLASS | METH_VARARGS | METH_KEYWORDS, 
-     "Get a matrix filled with constant scalar value"},
-    {"array", (PyCFunction) arrayMatrix, METH_CLASS | METH_VARARGS | METH_KEYWORDS, 
+    {"fill", (PyCFunction) matrix_from_value, METH_CLASS | METH_VARARGS | METH_KEYWORDS, 
+     "Get a matrix filled with scalar value"},
+    {"array", (PyCFunction) matrix_from_array, METH_CLASS | METH_VARARGS | METH_KEYWORDS, 
      "Get a matrix from a flattened array"},
-    {"gauss", (PyCFunction) gaussMatrix, METH_CLASS | METH_VARARGS | METH_KEYWORDS, 
+    {"gauss", (PyCFunction) matrix_from_gauss, METH_CLASS | METH_VARARGS | METH_KEYWORDS, 
      "Get a matrix filled with random numbers from a gaussian distribution"},
-    {"uniform", (PyCFunction) uniformMatrix, METH_CLASS | METH_VARARGS | METH_KEYWORDS, 
+    {"uniform", (PyCFunction) matrix_from_uniform, METH_CLASS | METH_VARARGS | METH_KEYWORDS, 
      "Get a matrix filled with uniformally distributed random numbers between bounds"},
     {NULL, NULL, 0, NULL}       /* Sentinal */
 };
 
 
 /* PyGetSetDef functions */
-static PyObject* MatrixGet_rows(MatrixObject *self) {
+static PyObject* matrix_get_rows(MatrixObject *self) {
     if (!self->Py_rows) {
         self->Py_rows = PyLong_FromLong(self->rows);
         if (!self->Py_rows) return PyErr_NoMemory();
@@ -226,7 +234,7 @@ static PyObject* MatrixGet_rows(MatrixObject *self) {
     return self->Py_rows;
 }
 
-static PyObject* MatrixGet_cols(MatrixObject *self) {
+static PyObject* matrix_get_cols(MatrixObject *self) {
     if (!self->Py_cols) {
         self->Py_cols = PyLong_FromLong(self->cols);
         if (!self->Py_cols) return PyErr_NoMemory();
@@ -235,7 +243,7 @@ static PyObject* MatrixGet_cols(MatrixObject *self) {
     return self->Py_cols;
 }
 
-static PyObject* MatrixGet_data(MatrixObject *self) {
+static PyObject* matrix_get_data(MatrixObject *self) {
     if (!self->Py_data) {
         self->Py_data = PyTuple_New(self->size);
         if (!self->Py_data) return PyErr_NoMemory();
@@ -253,9 +261,9 @@ static PyObject* MatrixGet_data(MatrixObject *self) {
     return self->Py_data;
 }
 
-static PyObject* MatrixGet_transpose(MatrixObject *self) {
+static PyObject* matrix_get_transpose(MatrixObject *self) {
     if (!self->transpose) {
-        MatrixObject *trans = (MatrixObject*) Matrix_new(&MatrixType, NULL, NULL);
+        MatrixObject *trans = (MatrixObject*) matrix_new(&MatrixType, NULL, NULL);
         trans->rows = self->cols;
         trans->cols = self->rows;
         trans->Py_rows = self->Py_cols;
@@ -263,7 +271,7 @@ static PyObject* MatrixGet_transpose(MatrixObject *self) {
         Py_INCREF(trans->Py_rows);
         Py_INCREF(trans->Py_cols);
         trans->size = trans->rows * trans->cols;
-        if (!mallocMatrixData(trans)) return NULL;
+        if (!matrix_alloc_data(trans)) return NULL;
 
         // transpose algo
         T *self_ptr = self->data;
@@ -286,20 +294,20 @@ static PyObject* MatrixGet_transpose(MatrixObject *self) {
 }
 
 static PyGetSetDef MatrixGetSetDefs[] = {
-    {"rows", (getter) MatrixGet_rows, NULL, 
+    {"rows", (getter) matrix_get_rows, NULL, 
      "Get rows"},
-    {"cols", (getter) MatrixGet_cols, NULL, 
+    {"cols", (getter) matrix_get_cols, NULL, 
      "Get cols"},
-    {"data", (getter) MatrixGet_data, NULL, 
+    {"data", (getter) matrix_get_data, NULL, 
      "Get data"},
-    {"T", (getter) MatrixGet_transpose, NULL, 
+    {"T", (getter) matrix_get_transpose, NULL, 
      "Get transpose"},
     {NULL, NULL, NULL, NULL}    /* Sentinal */
 };
 
 
 /* PyTypeObject functions */
-static PyObject* Matrix_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
+static PyObject* matrix_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
     MatrixObject *self = (MatrixObject*) type->tp_alloc(type, 0);
     if (!self) return PyErr_NoMemory();
     self->rows = 0;
@@ -311,77 +319,101 @@ static PyObject* Matrix_new(PyTypeObject *type, PyObject *args, PyObject *kwds) 
     self->Py_cols = NULL;
     self->Py_data = NULL;
     self->Py_repr = NULL;
-    Py_INCREF(self);
     return (PyObject*) self;
 }
 
-static int Matrix_init(MatrixObject *self, PyObject *args, PyObject *kwds) {
-    Matrix_clear((PyObject*) self);
+static int matrix_init(MatrixObject *self, PyObject *args, PyObject *kwds) {
+    matrix_clear((PyObject*) self);
     static char *kwlist[] = {"data", NULL};
-    PyObject *flattened_data = NULL;
+    PyObject *data_2d = NULL;
 
     // Parse args
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O", kwlist, &flattened_data)) return -1;
-
-    if (!PyList_Check(flattened_data)) {
-        PyErr_Format(PyExc_TypeError, "cannot construct data from object of type '%s'", Py_TYPE(flattened_data)->tp_name);
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O", kwlist, &data_2d)) {
         return -1;
     }
 
-    self->rows = PyList_Size(flattened_data);
+    if (!PyList_Check(data_2d)) {
+        PyErr_Format(
+            PyExc_TypeError, 
+            "data must be 'List[List[float]]', but received '%s'", 
+            Py_TYPE(data_2d)->tp_name);
+        return -1;
+    }
+
+    self->rows = PyList_Size(data_2d);
     if (self->rows < 1) {
-        PyErr_Format(PyExc_ValueError, "data cannot have %ld rows", self->rows);
+        PyErr_Format(
+            PyExc_ValueError, 
+            "data must have at least 1 row, received %ld rows", 
+            self->rows);
         return -1;
     }
 
-    PyObject *row_object = PyList_GetItem(flattened_data, 0);
+    PyObject *row_object = PyList_GetItem(data_2d, 0);
     if (!PyList_Check(row_object)) {
-        PyErr_Format(PyExc_TypeError, "data must contain only list references, but received '%s' reference ", 
+        PyErr_Format(
+            PyExc_TypeError, 
+            "data must contain only list references, but received '%s' reference ", 
             Py_TYPE(row_object)->tp_name);
         return -1;
     }
 
     self->cols = PyList_Size(row_object);
     if (self->cols < 1) {
-        PyErr_Format(PyExc_ValueError, "data cannot have %ld cols", self->cols);
+        PyErr_Format(
+            PyExc_ValueError, 
+            "data cannot have %ld cols", 
+            self->cols);
         return -1;
     }
 
     self->size = self->rows * self->cols;
-    if (!mallocMatrixData(self)) return -1;
+    if (!matrix_alloc_data(self)) {
+        return -1;
+    }
 
+    T *data_iter = self->data;
     for (long row_i = 0; row_i < self->rows; ++row_i) {
-        row_object = PyList_GetItem(flattened_data, row_i);
+        row_object = PyList_GetItem(data_2d, row_i);
         if (!PyList_Check(row_object)) {
-            PyErr_Format(PyExc_TypeError, "data must contain only list references, but received '%s' reference ", 
+            PyErr_Format(
+                PyExc_TypeError, 
+                "data must contain only lists, but received '%s'", 
                 Py_TYPE(row_object)->tp_name);
             return -1;
         }
         long row_size = PyList_Size(row_object);
         if (row_size != self->cols) {
-            PyErr_Format(PyExc_ValueError, "expected %d element(s) in row, but received %d element(s)", self->cols, row_size);
+            PyErr_Format(
+                PyExc_ValueError, 
+                "expected %d element(s) in row, but received %d element(s)", 
+                self->cols, 
+                row_size);
             return -1;
         }
         for (long col_i = 0; col_i < self->cols; ++col_i) {
             PyObject *item = PyList_GetItem(row_object, col_i);
             if (!PyLong_Check(item)) {
-                PyErr_Format(PyExc_TypeError, "encounted non-numeric type in data: %s", Py_TYPE(item)->tp_name);
+                PyErr_Format(
+                    PyExc_TypeError, 
+                    "encounted non-numeric type in data: '%s'", 
+                    Py_TYPE(item)->tp_name);
                 return -1;
             }
-            self->data[row_i * self->cols + col_i] = PyFloat_AsDouble(item);
+            *data_iter = PyFloat_AsDouble(item);
+            ++data_iter;
         }
     }
-    Py_INCREF(self);
     return 0;
 }
 
-static void Matrix_dealloc(MatrixObject *self) {
+static void matrix_dealloc(MatrixObject *self) {
     PyObject_GC_UnTrack(self);
-    Matrix_clear((PyObject*) self);
+    matrix_clear((PyObject*) self);
     Py_TYPE(self)->tp_free((PyObject*) self);
 }
 
-static PyObject* Matrix_repr(MatrixObject *self, PyObject *Py_UNUSED(ignored)) {
+static PyObject* matrix_repr(MatrixObject *self, PyObject *Py_UNUSED(ignored)) {
     if (!self->Py_repr) {
         self->Py_repr = PyUnicode_FromFormat("Matrix with %d rows and %d cols", self->rows, self->cols);
         if (self->Py_repr) {
@@ -393,7 +425,7 @@ static PyObject* Matrix_repr(MatrixObject *self, PyObject *Py_UNUSED(ignored)) {
     return self->Py_repr;
 }
 
-static void Matrix_clear(PyObject* o) {
+static void matrix_clear(PyObject* o) {
     MatrixObject *mat = (MatrixObject*) o;
     if (mat->data) free(mat->data);
     Py_CLEAR(mat->transpose);
@@ -403,7 +435,7 @@ static void Matrix_clear(PyObject* o) {
     Py_CLEAR(mat->Py_repr);
 }
 
-static int Matrix_traverse(MatrixObject *self, visitproc visit, void *arg) {
+static int matrix_traverse(MatrixObject *self, visitproc visit, void *arg) {
     Py_VISIT(self->transpose);
     return 0;
 }
@@ -415,27 +447,29 @@ static PyTypeObject MatrixType = {
     .tp_basicsize = sizeof(MatrixObject),
     .tp_itemsize = 0,
     .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
-    .tp_new = Matrix_new,
-    .tp_init = (initproc) Matrix_init,
-    .tp_dealloc = (destructor) Matrix_dealloc,
+    .tp_new = matrix_new,
+    .tp_init = (initproc) matrix_init,
+    .tp_dealloc = (destructor) matrix_dealloc,
     .tp_methods = MatrixMethodsDefs,
-    .tp_repr = (reprfunc) Matrix_repr,
+    .tp_repr = (reprfunc) matrix_repr,
     .tp_getset = MatrixGetSetDefs,
     .tp_as_number = &MatrixNumberMethods,
-    .tp_clear = (inquiry) Matrix_clear,
-    .tp_traverse = (traverseproc) Matrix_traverse,
+    .tp_clear = (inquiry) matrix_clear,
+    .tp_traverse = (traverseproc) matrix_traverse,
 };
 
 
 /* PyNumberMethods functions */
 static PyObject* MatrixNumber_merge(MatrixObject *mat1, MatrixObject *mat2, compfunc compress) {
     if (mat1->rows != mat2->rows || mat1->cols != mat2->cols) {
-        PyErr_SetString(PyExc_ValueError, "matrices are not the same shape");
+        PyErr_SetString(
+            PyExc_ValueError, 
+            "matrices are not the same shape");
         return NULL;
     }
     MatrixObject *res = freshMatrix(mat1->rows, mat1->cols);
     if (!res) return NULL;
-    if (!mallocMatrixData(res)) return NULL;
+    if (!matrix_alloc_data(res)) return NULL;
     if (!compress(mat1->data, mat2->data, res->data, mat1->size)) return NULL;
     return (PyObject*) res;
 }
@@ -508,65 +542,76 @@ static PyObject* MatrixNumber_scalar_divide(MatrixObject *mat, PyObject *scalar)
     return (PyObject*) res;
 }
 
-static PyObject* MatrixNumber_add(PyObject *a, PyObject *b) {
-    PyObject *res = NULL;
-    if (QMatrix_Check(a) && QMatrix_Check(b)) {
-        return MatrixNumber_merge((MatrixObject*) a, (MatrixObject*) b, MatrixNumber_merge_add);
+static PyObject* matrix_number_add(PyObject *obj1, PyObject *obj2) {
+    if (Py_TYPE(obj1) == &MatrixType && Py_TYPE(obj2) == &MatrixType) {
+        return MatrixNumber_merge(
+            (MatrixObject*) obj1, 
+            (MatrixObject*) obj2, 
+            MatrixNumber_merge_add);
     }
-    if (!res) return unsupportedOperation(a, b, '+');
-    Py_INCREF(res);
-    return res;
+    return unsupportedOperation(obj1, obj2, '+');
 }
 
-static PyObject* MatrixNumber_subtract(PyObject *a, PyObject *b) {
-    PyObject *res = NULL;
-    if (QMatrix_Check(a) && QMatrix_Check(b)) {
-        return MatrixNumber_merge((MatrixObject*) a, (MatrixObject*) b, MatrixNumber_merge_subtract);
+static PyObject* matrix_number_subtract(PyObject *obj1, PyObject *obj2) {
+    if (Py_TYPE(obj1) == &MatrixType && Py_TYPE(obj2) == &MatrixType) {
+        return MatrixNumber_merge(
+            (MatrixObject*) obj1, 
+            (MatrixObject*) obj2, 
+            MatrixNumber_merge_subtract);
     }
-    if (!res) return unsupportedOperation(a, b, '-');
-    Py_INCREF(res);
-    return res;
+    return unsupportedOperation(obj1, obj2, '-');
 }
 
-static PyObject* MatrixNumber_multiply(PyObject *a, PyObject *b) {
-    PyObject *res = NULL;
-    if (QMatrix_Check(a) && QMatrix_Check(b)) {
-        res = MatrixNumber_merge((MatrixObject*) a, (MatrixObject*) b, MatrixNumber_merge_multiply);
+static PyObject* matrix_number_multiply(PyObject *obj1, PyObject *obj2) {
+    if (Matrix_Check(obj1) && Matrix_Check(obj2)) {
+        return MatrixNumber_merge(
+            (MatrixObject*) obj1, 
+            (MatrixObject*) obj2, 
+            MatrixNumber_merge_multiply);
     }
-    if (QMatrix_Check(a) && (PyLong_Check(b) || PyFloat_Check(b))) {
-        res = MatrixNumber_scalar_multiply((MatrixObject*) a, b);
+    if (Matrix_Check(obj1) && (PyLong_Check(obj2) || PyFloat_Check(obj2))) {
+        return MatrixNumber_scalar_multiply(
+            (MatrixObject*) obj1, 
+            (PyObject*) obj2);
     }
-    if (QMatrix_Check(b) && (PyLong_Check(a) || PyFloat_Check(a))) {
-        res = MatrixNumber_scalar_multiply((MatrixObject*) b, a);
+    if (Matrix_Check(obj2) && (PyLong_Check(obj1) || PyFloat_Check(obj1))) {
+        return MatrixNumber_scalar_multiply(
+            (MatrixObject*) obj2, 
+            (PyObject*) obj1);
     }
-    if (!res) return unsupportedOperation(a, b, '*');
-    Py_INCREF(res);
-    return res;
+    return unsupportedOperation(obj1, obj2, '*');
 }
 
-static PyObject* MatrixNumber_divide(PyObject *a, PyObject *b) {
-    PyObject *res = NULL;
-    if (QMatrix_Check(a) && QMatrix_Check(b)) {
-        res = MatrixNumber_merge((MatrixObject*) a, (MatrixObject*) b, MatrixNumber_merge_divide);
+static PyObject* matrix_number_divide(PyObject *obj1, PyObject *obj2) {
+    if (Matrix_Check(obj1) && Matrix_Check(obj2)) {
+        return MatrixNumber_merge(
+            (MatrixObject*) obj1, 
+            (MatrixObject*) obj2, 
+            MatrixNumber_merge_divide);
     }
-    if (QMatrix_Check(a) && (PyLong_Check(b) || PyFloat_Check(b))) {
-        res = MatrixNumber_scalar_divide((MatrixObject*) a, b);
+    if (Matrix_Check(obj1) && (PyLong_Check(obj2) || PyFloat_Check(obj2))) {
+        return MatrixNumber_scalar_divide(
+            (MatrixObject*) obj1, 
+            (PyObject*) obj2);
     }
-    if (!res) return unsupportedOperation(a, b, '/');
-    Py_INCREF(res);
-    return res;
+    return unsupportedOperation(obj1, obj2, '/');
 }
 
-static PyObject* MatrixNumber_matrix_multiply(PyObject *a, PyObject *b) {
-    if (!QMatrix_Check(a) || !QMatrix_Check(b)) {
-        return unsupportedOperation(a, b, '@');
+static PyObject* matrix_number_matmul(PyObject *obj1, PyObject *obj2) {
+    if (!Matrix_Check(obj1) || !Matrix_Check(obj2)) {
+        return unsupportedOperation(obj1, obj2, '@');
     }
-    MatrixObject *mat1 = (MatrixObject*) a;
-    MatrixObject *mat2 = (MatrixObject*) b;
+    MatrixObject *mat1 = (MatrixObject*) obj1;
+    MatrixObject *mat2 = (MatrixObject*) obj2;
 
     if (mat1->cols != mat2->rows) {
-        PyErr_Format(PyExc_ValueError, "Matrix 1 has dims (%ld, %ld) while Matrix 2 has dims (%ld, %ld); Incompatible for multiplication", 
-            mat1->rows, mat1->cols, mat2->rows, mat2->cols);
+        PyErr_Format(
+            PyExc_ValueError, 
+            "Matrix 1 has dims (%ld, %ld) while Matrix 2 has dims (%ld, %ld); Incompatible for multiplication", 
+            mat1->rows, 
+            mat1->cols, 
+            mat2->rows, 
+            mat2->cols);
         return NULL;
     }
     MatrixObject *res = freshMatrix(mat1->rows, mat2->cols);
@@ -598,11 +643,11 @@ static PyObject* MatrixNumber_matrix_multiply(PyObject *a, PyObject *b) {
 }
 
 static PyNumberMethods MatrixNumberMethods = {
-    .nb_add = (binaryfunc) MatrixNumber_add,
-    .nb_subtract = (binaryfunc) MatrixNumber_subtract,
-    .nb_multiply = (binaryfunc) MatrixNumber_multiply,
-    .nb_true_divide = (binaryfunc) MatrixNumber_divide,
-    .nb_matrix_multiply = (binaryfunc) MatrixNumber_matrix_multiply,
+    .nb_add = (binaryfunc) matrix_number_add,
+    .nb_subtract = (binaryfunc) matrix_number_subtract,
+    .nb_multiply = (binaryfunc) matrix_number_multiply,
+    .nb_true_divide = (binaryfunc) matrix_number_divide,
+    .nb_matrix_multiply = (binaryfunc) matrix_number_matmul,
 };
 
 
@@ -660,7 +705,7 @@ static PyMethodDef QuantumMethodDefs[] = {
 };
 
 static PyObject* activation(PyObject *o, void(*map)(T*,T*)) {
-    if (!QMatrix_Check(o)) {
+    if (!Matrix_Check(o)) {
         PyErr_Format(PyExc_TypeError, "expected '%s' object, but received '%s' object", MatrixType.tp_name, Py_TYPE(o)->tp_name);
         return NULL;
     }

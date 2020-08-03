@@ -1,7 +1,9 @@
-
 from distutils.core import setup, Extension
 
-module = Extension("Quantum", sources=['matrix.c'])
+old = ["matrix1.c"]
+new = ["src/quantum.c"]
+
+module = Extension("Quantum", sources=new)
 
 setup(name="Quantum Matrix",
       version="1,0",

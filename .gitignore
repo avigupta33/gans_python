@@ -1,6 +1,13 @@
-
-#  VS code files
+# VS code files
 .vscode/
 
 # Cache
 **/__pycache__
+
+# C Extensions
+# Device-specific Python.h path
+**/python_path.h
+
+# Compiled archive library
+c_extensions/build/**
+c_extensions/*.so
