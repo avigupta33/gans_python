@@ -55,20 +55,23 @@ static PyTypeObject MatrixType = {
     .tp_str = (reprfunc) matrix_str,
     .tp_getset = MatrixGetSetDefs,
     .tp_as_number = &MatrixNumberMethods,
-    .tp_clear = (inquiry) matrix_clear,
     .tp_traverse = (traverseproc) matrix_traverse,
+    .tp_clear = (inquiry) matrix_clear,
+    .tp_richcompare = (richcmpfunc) matrix_richcompare,
 };
 
 // static methods
 static PyObject* matrix_class_gauss(PyObject *o, PyObject *args, PyObject *kwds) {
-    static char *kwlist[] = {"mu", "sigma", "dims", NULL};
+    static char *kwlist[] = {"dims", "mu", "sigma", "seed", NULL};
     PyObject *py_dims;
-    double mu;
-    double sigma;
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "ddO", kwlist, 
+    double mu = 0;
+    double sigma = 1;
+    unsigned int seed = time(NULL);
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|dd$I", kwlist, 
+        &py_dims,
         &mu,
         &sigma,
-        &py_dims)) return NULL;
+        &seed)) return NULL;
 
     Py_ssize_t dims[2];
 
@@ -77,6 +80,7 @@ static PyObject* matrix_class_gauss(PyObject *o, PyObject *args, PyObject *kwds)
     MatrixObject *self = (MatrixObject*) _matrix_create_from_dims(dims[0], dims[1]);
     if (!self) return NULL;
 
+    set_seed(seed);
     for (it i = 0; i < self->size; ++i) {
         self->data[i] = gauss(mu, sigma);
     }
@@ -85,14 +89,16 @@ static PyObject* matrix_class_gauss(PyObject *o, PyObject *args, PyObject *kwds)
 }
 
 static PyObject* matrix_class_uniform(PyObject *o, PyObject *args, PyObject *kwds) {
-    static char *kwlist[] = {"dims", "lower", "upper", NULL};
+    static char *kwlist[] = {"dims", "lower", "upper", "seed", NULL};
     PyObject *py_dims;
-    double lower;
-    double upper;
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "Odd", kwlist, 
+    double lower = 0;
+    double upper = 1;
+    unsigned int seed = time(NULL);
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|dd$I", kwlist, 
         &py_dims,
         &lower,
-        &upper)) return NULL;
+        &upper,
+        &seed)) return NULL;
 
     if (lower > upper) {
         char precision[] = "%.3f";
@@ -114,6 +120,7 @@ static PyObject* matrix_class_uniform(PyObject *o, PyObject *args, PyObject *kwd
     MatrixObject *self = (MatrixObject*) _matrix_create_from_dims(dims[0], dims[1]);
     if (!self) return NULL;
 
+    set_seed(seed);
     for (it i = 0; i < self->size; ++i) {
         self->data[i] = uniform(lower, upper);
     }
@@ -310,6 +317,40 @@ static PyObject* matrix_new(PyTypeObject *type, PyObject *args, PyObject *kwds) 
     self->row_idx = _matrix_idx_row_major;
     self->col_idx = _matrix_idx_col_major;
     return (PyObject*) self;
+}
+
+static PyObject* matrix_richcompare(MatrixObject *self, PyObject *obj, int op) {
+    char *op_id = "";
+    if (Matrix_Check(obj)) {
+        MatrixObject *other = (MatrixObject*) obj;
+        PyObject *ret = NULL;
+        switch (op) {
+            case Py_EQ : {
+                ret = !_matrix_not_equal(self, other) 
+                    ? Py_True 
+                    : Py_False;
+                break;
+            }
+            case Py_NE : {
+                ret = _matrix_not_equal(self, other)
+                    ? Py_True
+                    : Py_False;
+                break;
+            }
+            case Py_LT : { op_id = "<"; break; }
+            case Py_LE : { op_id = "<="; break; }
+            case Py_GT : { op_id = ">"; break; }
+            case Py_GE : { op_id = ">="; break; }
+        }
+        if (ret) {
+            Py_INCREF(ret);
+            return ret;
+        }
+    }
+    return _matrix_number_not_implemented(
+        (PyObject*) self,
+        obj,
+        op_id);
 }
 
 static int matrix_init(MatrixObject *self, PyObject *args, PyObject *kwds) {
@@ -560,6 +601,16 @@ static bool _matrix_unbind_state_objects(MatrixObject *self, bool keep_data) {
     return true;
 }
 
+static bool _matrix_not_equal(MatrixObject *mat1, MatrixObject *mat2) {
+    if (mat1->size != mat2->size) return true;
+    if (mat1->rows != mat2->rows || mat1->cols != mat2->cols) return true;
+
+    for (it i = 0; i < mat1->size; ++i) {
+        if (mat1->data[mat1->row_idx(mat1, i)] != mat2->data[mat2->row_idx(mat2, i)]) return true;
+    }
+    return false;
+}
+
 static void _matrix_destroy(MatrixObject *self) {
     if (self) {
         matrix_clear(self);
@@ -582,10 +633,10 @@ static PyObject* _matrix_bad_init(MatrixObject *self) {
     return PyErr_NoMemory();
 }
 
-static PyObject* _matrix_number_not_implemented(PyObject *obj1, PyObject *obj2, const char op_id) {
+static PyObject* _matrix_number_not_implemented(PyObject *obj1, PyObject *obj2, char *op_id) {
     return PyErr_Format(
         PyExc_TypeError,
-        "unsupported operand type(s) for '%c': '%s' and '%s'",
+        "unsupported operand type(s) for '%s': '%s' and '%s'",
         op_id,
         Py_TYPE(obj1)->tp_name,
         Py_TYPE(obj2)->tp_name);
@@ -659,13 +710,13 @@ static PyObject* matrix_get_transpose(MatrixObject *self) {
 static PyObject* matrix_number_add(PyObject *obj1, PyObject *obj2) {
     return (Matrix_Check(obj1) && Matrix_Check(obj2))
         ? _matrix_number_merge((MatrixObject*) obj1,(MatrixObject*) obj2, _matrix_number_merge_add)
-        : _matrix_number_not_implemented(obj1, obj2, '+');
+        : _matrix_number_not_implemented(obj1, obj2, "+");
 }
 
 static PyObject* matrix_number_sub(PyObject *obj1, PyObject *obj2) {
     return (Matrix_Check(obj1) && Matrix_Check(obj2))
         ? _matrix_number_merge((MatrixObject*) obj1, (MatrixObject*) obj2, _matrix_number_merge_sub)
-        : _matrix_number_not_implemented(obj1, obj2, '-');
+        : _matrix_number_not_implemented(obj1, obj2, "-");
 }
 
 static PyObject* matrix_number_mul(PyObject *obj1, PyObject *obj2) {
@@ -676,7 +727,7 @@ static PyObject* matrix_number_mul(PyObject *obj1, PyObject *obj2) {
     } else if (Matrix_Check(obj2) && _matrix_number_scalar_check(obj1)) {
         return _matrix_number_scalar_mul((MatrixObject*) obj2, _matrix_number_scalar_as_double(obj1));
     }
-    return _matrix_number_not_implemented(obj1, obj2, '*');
+    return _matrix_number_not_implemented(obj1, obj2, "*");
 }
 
 // static PyObject* matrix_number_negative(PyObject *obj1);
@@ -694,7 +745,7 @@ static PyObject* matrix_number_div(PyObject *obj1, PyObject *obj2) {
     } else if (Matrix_Check(obj1) && _matrix_number_scalar_check(obj2)) {
         return _matrix_number_scalar_div((MatrixObject*) obj1, _matrix_number_scalar_as_double(obj2));
     }
-    return _matrix_number_not_implemented(obj1, obj2, '/');
+    return _matrix_number_not_implemented(obj1, obj2, "/");
 }
 
 // static PyObject* matrix_number_inplace_div(PyObject *obj1, PyObject *obj2);
@@ -702,7 +753,7 @@ static PyObject* matrix_number_div(PyObject *obj1, PyObject *obj2) {
 
 static PyObject* matrix_number_matmul(PyObject *obj1, PyObject *obj2) {
     if (!Matrix_Check(obj1) || !Matrix_Check(obj2)) {
-        return _matrix_number_not_implemented(obj1, obj2, '@');
+        return _matrix_number_not_implemented(obj1, obj2, "@");
     }
 
     MatrixObject *mat1 = (MatrixObject*) obj1;

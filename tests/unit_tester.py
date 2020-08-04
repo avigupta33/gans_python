@@ -1,7 +1,3 @@
-'''
-Unit testing framework
-'''
-
 from typing import *
 
 # Allow for importation of modules from parent folders
@@ -12,18 +8,13 @@ sys.path.insert(0, parent_dir)
 
 
 def runTestsFromEnv(title: str, local: Dict[str, Any], prefix: str="test") -> None:
-    '''
-    Evaluates test cases found in the environment 
-    with the given prefix (default="test")
-    '''
+    '''Evaluates test cases found in the environment'''
     tests = [local[key] for key in local.keys() if key.startswith(prefix)]
     runTests(title, tests)
 
 
 def runTests(title: str, tests: List[Callable[[], bool]]) -> None:
-    '''
-    Evaluate test cases and print results
-    '''
+    '''Evaluate test cases and print results'''
     num_passed = 0
     # Has to be expanded to print fails
     for test in tests:
@@ -33,14 +24,12 @@ def runTests(title: str, tests: List[Callable[[], bool]]) -> None:
             else:
                 print(f"Failed on {test.__name__}")
         except Exception as e:
-            print(f"Uncaught exception on {test.__name__}: {e}")
+            print(f"Uncaught exception on {test.__name__}:\n  {type(e).__name__}: {e}")
     print(f"{title} passed {num_passed}/{len(tests)} cases")
 
 
 def raises(func: Callable[[], Any], err_type: Exception, message: str) -> bool:
-    '''
-    Determine if a function raises a specific exception
-    '''
+    '''Determine if a function raises a specific exception'''
     try:
         func()
         # Expected an exception but none were raised
@@ -55,7 +44,5 @@ def raises(func: Callable[[], Any], err_type: Exception, message: str) -> bool:
 
 
 def isPassing(expected: Any, received: Any) -> bool:
-    '''
-    Syntactic sugar to check equivalency
-    '''
+    '''Syntactic sugar to check equivalency'''
     return expected == received

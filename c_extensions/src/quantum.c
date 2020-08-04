@@ -3,34 +3,12 @@
 // #include "propagate.c"
 #include "random.c"
 
-static PyMethodDef QuantumMethodDefs[] = {
-    {"seed", (PyCFunction) quantum_seed, METH_FASTCALL,
-     "Set the seed for random matrices from distributions"},
-    {NULL, NULL, 0, NULL}
-};
-
 static PyModuleDef QuantumModule = {
     PyModuleDef_HEAD_INIT,
     .m_name = "Quantum Module",
     .m_doc = "#4145",
     .m_size = -1,
-    .m_methods = QuantumMethodDefs,
 };
-
-// module methods
-static PyObject* quantum_seed(PyObject *self, PyObject *const *objs, Py_ssize_t nargs) {
-    if (nargs == 0) {
-        srandom(time(NULL));
-    } else if (PyLong_Check(objs[0])) {
-        srandom(_PyLong_AsInt(objs[0]));
-    } else {
-        return _quantum_type_error(
-            "seed",
-            &PyLong_Type,
-            Py_TYPE(objs[0]));
-    }
-    return Py_None;
-}
 
 // (internal)
 static PyObject* _quantum_type_error(const char *label, PyTypeObject *expected, PyTypeObject *actual) {
@@ -65,8 +43,6 @@ PyMODINIT_FUNC PyInit_Quantum() {
     for (it i = 0; types[i] != NULL; ++i) {
         Py_INCREF(types[i]);
     }
-
-    srandom(time(NULL));
 
     return module;
 }

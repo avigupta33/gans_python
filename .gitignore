@@ -5,9 +5,8 @@
 **/__pycache__
 
 # C Extensions
-# Device-specific Python.h path
-**/python_path.h
-
-# Compiled archive library
+c_extensions/python/pypath.h
 c_extensions/build/**
-c_extensions/*.so
+c_extensions/old
+*.so
+*.dumb

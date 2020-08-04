@@ -10,6 +10,8 @@ static double TWO_PI = M_PI * 2;
 static bool gauss_has_next = false;
 static double gauss_next = 0;
 
+static void set_seed(unsigned int seed);
+
 static double next_uniform();
 static double next_gauss();
 

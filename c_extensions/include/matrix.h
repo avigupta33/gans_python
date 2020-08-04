@@ -39,6 +39,7 @@ static PyTypeObject MatrixType;
 
 // static methods
 static PyObject* matrix_class_gauss(PyObject *o, PyObject *args, PyObject *kwds); // create gauss-distributed matrix, sets error flag and returns NULL on failure
+// mu should default to 0, sigma defaults to 1
 static PyObject* matrix_class_uniform(PyObject *o, PyObject *args, PyObject *kwds); // create uniformly-distributed matrix, sets error flag and returns NULL on failure
 static PyObject* matrix_map(PyObject *o, PyObject *func); // apply an element-wise mapping function
 
@@ -49,6 +50,7 @@ static bool _matrix_parse_dims(PyObject *py_dims, Py_ssize_t *dims); // parse di
 static PyObject* matrix_repr(MatrixObject *self);
 static PyObject* matrix_str(MatrixObject *self);
 static PyObject* matrix_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
+static PyObject* matrix_richcompare(MatrixObject *self, PyObject *obj, int op);
 static int matrix_init(MatrixObject *self, PyObject *args, PyObject *kwds);
 static int matrix_traverse(MatrixObject *self, visitproc visit, void *arg);
 static void matrix_clear(MatrixObject *self);
@@ -61,10 +63,11 @@ static int _matrix_init_from_1d_list(MatrixObject *self, PyObject *py_vector, Py
 static int _matrix_init_from_2d_list(MatrixObject *self, PyObject *py_matrix, PyObject *py_dims);
 static bool _matrix_alloc_data(MatrixObject *self); // alloc matrix data, sets error flag and returns false on failure
 static bool _matrix_unbind_state_objects(MatrixObject *self, bool keep_data); // unbinds PyObject's related to state, loses data if keep_data == false
+static bool _matrix_not_equal(MatrixObject *mat1, MatrixObject *mat2);
 static void _matrix_destroy(MatrixObject *self); // frees self
 static PyObject* _matrix_create_from_dims(Py_ssize_t rows, Py_ssize_t cols); // create matrix with allocd data, sets error flag and returns NULL on failure
 static PyObject* _matrix_bad_init(MatrixObject *self); // frees self, sets error flag and returns NULL
-static PyObject* _matrix_number_not_implemented(PyObject *obj1, PyObject *obj2, const char op_id);
+static PyObject* _matrix_number_not_implemented(PyObject *obj1, PyObject *obj2, char *op_id);
 
 // matrix get-set methods
 static PyObject* matrix_get_rows(MatrixObject *self);
