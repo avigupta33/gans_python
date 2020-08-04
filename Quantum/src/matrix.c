@@ -62,20 +62,19 @@ static PyTypeObject MatrixType = {
 
 // static methods
 static PyObject* matrix_class_gauss(PyObject *o, PyObject *args, PyObject *kwds) {
-    static char *kwlist[] = {"dims", "mu", "sigma", "seed", NULL};
-    PyObject *py_dims;
+    static char *kwlist[] = {"mu", "sigma", "dims", "seed", NULL};
     double mu = 0;
     double sigma = 1;
+    PyObject *py_dims = NULL;
     unsigned int seed = time(NULL);
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|dd$I", kwlist, 
-        &py_dims,
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|dd$OI", kwlist, 
         &mu,
         &sigma,
+        &py_dims,
         &seed)) return NULL;
 
-    Py_ssize_t dims[2];
-
-    if (!_matrix_parse_dims(py_dims, dims)) return NULL;
+    Py_ssize_t dims[2] = {1, 1};
+    if (py_dims && !_matrix_parse_dims(py_dims, dims)) return NULL;
 
     MatrixObject *self = (MatrixObject*) _matrix_create_from_dims(dims[0], dims[1]);
     if (!self) return NULL;
@@ -89,15 +88,15 @@ static PyObject* matrix_class_gauss(PyObject *o, PyObject *args, PyObject *kwds)
 }
 
 static PyObject* matrix_class_uniform(PyObject *o, PyObject *args, PyObject *kwds) {
-    static char *kwlist[] = {"dims", "lower", "upper", "seed", NULL};
-    PyObject *py_dims;
+    static char *kwlist[] = {"lower", "upper", "dims", "seed", NULL};
     double lower = 0;
     double upper = 1;
+    PyObject *py_dims = NULL;
     unsigned int seed = time(NULL);
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|dd$I", kwlist, 
-        &py_dims,
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|dd$OI", kwlist, 
         &lower,
         &upper,
+        &py_dims,
         &seed)) return NULL;
 
     if (lower > upper) {
@@ -113,9 +112,8 @@ static PyObject* matrix_class_uniform(PyObject *o, PyObject *args, PyObject *kwd
             upper_str);
     }
 
-    Py_ssize_t dims[2];
-
-    if (!_matrix_parse_dims(py_dims, dims)) return NULL;
+    Py_ssize_t dims[2] = {1, 1};
+    if (py_dims && !_matrix_parse_dims(py_dims, dims)) return NULL;
 
     MatrixObject *self = (MatrixObject*) _matrix_create_from_dims(dims[0], dims[1]);
     if (!self) return NULL;
@@ -176,7 +174,6 @@ static PyObject* matrix_map(PyObject *o, PyObject *func) {
 
 // static methods (internal)
 static bool _matrix_parse_dims(PyObject *py_dims, Py_ssize_t *dims) {
-    // if one dim is given, second dims is infered as 1
     dims[1] = 1;
 
     if (!PyTuple_Check(py_dims)) {
@@ -368,7 +365,6 @@ static int matrix_init(MatrixObject *self, PyObject *args, PyObject *kwds) {
     } else if (_matrix_number_scalar_check(py_data)) {
         return _matrix_init_from_scalar(self, py_data, py_dims);
     } else if (PyList_Check(py_data)) {
-
         if (Py_SIZE(py_data) < 1) {
             PyErr_Format(
                 PyExc_ValueError,
@@ -438,13 +434,8 @@ static int _matrix_init_copy_matrix(MatrixObject *self, PyObject *py_matrix) {
 }
 
 static int _matrix_init_from_scalar(MatrixObject *self, PyObject *py_scalar, PyObject *py_dims) {
-    Py_ssize_t dims[2];
-    if (py_dims) {
-        if (!_matrix_parse_dims(py_dims, dims)) return -1;
-    } else {
-        dims[0] = 1;
-        dims[1] = 1;
-    }
+    Py_ssize_t dims[2] = {1, 1};
+    if (py_dims && !_matrix_parse_dims(py_dims, dims)) return -1;
 
     dtype scalar = _matrix_number_scalar_as_double(py_scalar);
     self->rows = dims[0];
@@ -460,22 +451,16 @@ static int _matrix_init_from_scalar(MatrixObject *self, PyObject *py_scalar, PyO
 }
 
 static int _matrix_init_from_1d_list(MatrixObject *self, PyObject *py_vector, PyObject *py_dims) {
-    Py_ssize_t dims[2];
-    if (py_dims) {
-        if (!_matrix_parse_dims(py_dims, dims)) return -1;
-        if (dims[0] * dims[1] != Py_SIZE(py_vector)) {
-            PyErr_Format(
-                PyExc_ValueError,
-                "matrix with dims=(%ld, %ld) cannot be created from %d value(s)",
-                dims[0],
-                dims[1],
-                Py_SIZE(py_vector));
-            return -1;
-        }
-    } else {
-        // infered dims
-        dims[0] = Py_SIZE(py_vector);
-        dims[1] = 1;
+    Py_ssize_t dims[2] = {Py_SIZE(py_vector), 1};
+    if (py_dims && !_matrix_parse_dims(py_dims, dims)) return -1;
+    if (dims[0] * dims[1] != Py_SIZE(py_vector)) {
+        PyErr_Format(
+            PyExc_ValueError,
+            "matrix with dims=(%ld, %ld) cannot be created from %d value(s)",
+            dims[0],
+            dims[1],
+            Py_SIZE(py_vector));
+        return -1;
     }
     self->rows = dims[0];
     self->cols = dims[1];
@@ -498,9 +483,11 @@ static int _matrix_init_from_1d_list(MatrixObject *self, PyObject *py_vector, Py
 }
 
 static int _matrix_init_from_2d_list(MatrixObject *self, PyObject *py_matrix, PyObject *py_dims) {
-    Py_ssize_t dims[2];
-    dims[0] = Py_SIZE(py_matrix);
-    dims[1] = Py_SIZE(PyList_GET_ITEM(py_matrix, 0));
+    Py_ssize_t dims[2] = {
+        Py_SIZE(py_matrix), 
+        Py_SIZE(PyList_GET_ITEM(py_matrix, 0))
+    };
+    
     if (dims[1] < 1) {
         PyErr_Format(
             PyExc_ValueError,
@@ -545,8 +532,9 @@ static int _matrix_init_from_2d_list(MatrixObject *self, PyObject *py_matrix, Py
         if (row_size != self->cols) {
             PyErr_Format(
                 PyExc_ValueError, 
-                "expected %ld element(s) in row, but found %ld element(s)", 
+                "expected %ld element(s) in row %ld, but found %ld element(s)", 
                 self->cols, 
+                row_i, 
                 row_size);
             return -1;
         }

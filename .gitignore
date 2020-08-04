@@ -4,9 +4,7 @@
 # Cache
 **/__pycache__
 
-# C Extensions
-c_extensions/python/pypath.h
-c_extensions/build/**
-c_extensions/old
+# Quantum extension
+Quantum/include/pypath.h
+Quantum/build/**
 *.so
-*.dumb
