@@ -1,4 +1,3 @@
-from gans_types import *
 from matrix_random import *
 
 from matrix import Matrix

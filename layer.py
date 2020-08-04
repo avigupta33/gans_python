@@ -1,7 +1,6 @@
 '''
 Layer class for neural networks
 '''
-from gans_types import *
 from matrix import Matrix, Vector
 from typing import *
 import matrix_random as randm

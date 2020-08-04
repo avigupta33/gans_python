@@ -2,128 +2,96 @@
 Matrix testing script
 '''
 
-from unit_tester import *
-from gans_types import *
+# from c_extensions import Quantum as qa
+from c_extensions.Quantum import Matrix, seed
+from unit_tester import isPassing, raises, runTestsFromEnv
 
 
 def testLenDataFail1() -> bool:
-    data = [0,1,2,3]
+    data = list(range(4))
     return raises(
-        lambda: Matrix(rows=1, cols=5, data=data),
-        ValueError, "Expected 5 elements, but received 4 elements"
+        lambda: Matrix(data, dims = (1,5)),
+        ValueError, "matrix with dims=(1, 5) cannot be created from 4 value(s)"
     )
 
 
 def testLenDataFail2() -> bool:
-    data = [0,1,2,3,4,5,6,7,8,9]
+    data = list(range(10))
     return raises(
-        lambda: Matrix(rows=3, cols=3, data=data),
-        ValueError, "Expected 9 elements, but received 10 elements"
+        lambda: Matrix(data, dims = (3,3)),
+        ValueError, "matrix with dims=(3, 3) cannot be created from 10 value(s)"
     )
 
-
-def testZeros() -> bool:
-    return not any(x != 0 for x in Matrix.zeros(3,3).unordered_data)
-
-
-def testConst() -> bool:
-    return not any(x != 5 for x in Matrix.const(3,3,5).unordered_data)
-
-
-def testConstNegDimFail1() -> bool:
+def testDataShapeFail1() -> bool:
     return raises(
-        lambda: Matrix.const(rows=-1, cols=3, val=4),
-        ValueError, "Rows must be positive, is -1"
+        lambda: Matrix([[1, 0], [0, 1]], dims=(4, 1)),
+        ValueError, "dims of given 2D array (2, 2) don't match dims specified (4, 1)"
     )
 
-
-def testRepr1() -> bool:
-    mat = Matrix.zeros(rows=5, cols=5)
+def testCopyConstructor() -> bool:
+    x = Matrix(Matrix([[1, 0], [0, 1]], dims=(2, 2)))
     return isPassing(
-        expected = "Matrix with 5 rows and 5 cols", 
-        received = str(mat)
+        expected = Matrix([[1, 0], [0, 1]], dims=(2, 2)),
+        received = x
     )
 
-
-def testLen1() -> bool:
-    mat = Matrix.zeros(rows=4, cols=9)
+def testConsistentRandomGeneration() -> bool:
+    seed(1)
+    m = Matrix.gauss(mu=0, sigma=0.2, dims=(5,))
+    x = Matrix.gauss(mu=0, sigma=0.2, dims=(5,))
     return isPassing(
-        expected = 36,
-        received = len(mat)
+        expected=m,
+        received=x
     )
 
-
-def testCompress1()-> bool:
-    mat1 = Matrix.const(rows=4, cols=3, val=3)
-    mat2 = Matrix.const(rows=4, cols=3, val=5)
-    return isPassing(
-        expected = Matrix.const(rows=4, cols=3, val=8),
-        received = Matrix.compress(mat1, mat2, lambda a,b: a+b)
+def testNegDimFail1() -> bool:
+    return raises(
+        lambda: Matrix([[1, 0], [0, 1]], dims=(-1, 2)),
+        ValueError, "dims must be positive, non-zero values: (-1, 2)"
     )
-
-
-def testCompress2()-> bool:
-    mat1 = Matrix(rows=3, cols=3, data=[
-        1,-6,9,
-        -3,-4,4,
-        8,2,0
-    ])
-    mat2 = Matrix.zeros(rows=3, cols=3)
-    return isPassing(
-        expected = Matrix(rows=3, cols=3, data=[
-            1,0,9,
-            0,0,4,
-            8,2,0
-        ]),
-        received = Matrix.compress(mat1, mat2, lambda a,b: max(a,b))
-    )
-
 
 def testMatAdd1() -> bool:
-    mat = Matrix(rows=3, cols=3, data=[
-        1, 2, 3,
-        4, 5, 6,
-        7, 8, 9
-    ])
+    mat = Matrix(list(range(1,10)), dims = (3,3))
     return isPassing(
-        expected = 
-            Matrix(rows=3, cols=3, data=[
-                2, 4, 6,
-                8, 10, 12,
-                14, 16, 18
-            ]),
+        expected = Matrix(list(range(2,20,2)), dims = (3,3)),
         received = mat + mat
     )
 
 def testMatAddFail1() -> bool:
-    mat1 = Matrix.const(rows=4, cols=6, val=3)
-    mat2 = Matrix.const(rows=6, cols=5, val=4)
+    mat1 = Matrix(list(range(1, 13)), dims=(4, 3))
+    mat2 = Matrix(list(range(1,10)), dims = (3,3))
     return raises(
         lambda: mat1 + mat2,
-        ValueError, "Matrix 1 has dims (4, 6) while Matrix 2 has dims (6, 5). Incompatible for folding"
+        ValueError, "matrices are not the same shape"
     )
-
 
 def testMatSub1() -> bool:
-    mat1 = Matrix.const(rows=4, cols=5, val=12)
-    mat2 = Matrix.const(rows=4, cols=5, val=9)
+    mat1 = Matrix(list(range(2,20,2)), dims = (3,3))
+    mat2 = Matrix(list(range(3,30,3)), dims = (3,3))
     return isPassing(
-        expected = Matrix.const(rows=4, cols=5, val=3),
-        received = mat1 - mat2
+        expected = Matrix(list(range(1,10)), dims = (3,3)),
+        received = mat2 - mat1
     )
 
+def testMatSubFail1() -> bool:
+    mat1 = Matrix(list(range(1, 13)), dims=(4,3))
+    mat2 = Matrix(list(range(1, 10)), dims = (3,3))
+    return raises(
+        lambda: mat1 - mat2,
+        ValueError, "matrices are not the same shape"
+    )
 
 def testMatElementMul1() -> bool:
-    mat = Matrix(rows=5, cols=1, data=[1,2,3,4,5])
+    mat1 = Matrix(list(range(1, 13)), dims=(4, 3))
     return isPassing(
-        expected = Matrix(rows=5, cols=1, data=[1,4,9,16,25]),
-        received = mat * mat
+        expected = Matrix(list(range(2, 26, 2)), dims=(4, 3)),
+        received = 2 * mat1
     )
 
 
 def testMatNotEq1() -> bool:
-    mat1 = Matrix.zeros(rows=3, cols=4)
-    mat2 = Matrix.zeros(rows=4, cols=3)
+    mat1 = Matrix([0] * 12, dims = (3,4))
+    mat2 = Matrix([0] * 12, dims = (4,3))
     return isPassing(
         expected = False,
         received = mat1 == mat2
@@ -131,111 +99,77 @@ def testMatNotEq1() -> bool:
 
 
 def testMatNotEq2() -> bool:
-    mat1 = Matrix.zeros(rows=4, cols=3)
-    mat2 = Matrix.zeros(rows=3, cols=4)
+    mat1 = Matrix([2] * 9, dims=(3, 3))
+    mat2 = Matrix([1] * 9, dims=(3, 3))
     return isPassing(
         expected = False,
         received = mat1 == mat2
     )
 
-
 def testDataProperty() -> bool:
-    mat = Matrix(rows=3, cols=3, data=[
-        1,2,3,
-        4,5,6,
-        7,8,9
-    ])
-    return not any(a!=b for a,b in zip(mat.data, mat.unordered_data))
-
-
-def testManyIterRowCalls() -> bool:
-    mat = Matrix.zeros(rows=3, cols=3)
-    for _ in range(10):
-        for row in mat.iterRow():
-            if len(list(row())) != 3:
-                return False
-    return True
-
-
-def testManyIterColCalls() -> bool:
-    mat = Matrix.zeros(rows=3, cols=3)
-    for _ in range(10):
-        for col in mat.iterCol():
-            if len(list(col())) != 3:
-                return False
-    return True
-
+    mat = Matrix(list(range(1, 10)), dims=(3, 3))
+    return not any(a!=b for a,b in zip(mat.data, tuple(range(1, 10))))
 
 def testMatMul1() -> bool:
-    mat1 = Matrix.const(rows=4, cols=6, val=3)
-    mat2 = Matrix.const(rows=6, cols=5, val=4)
+    mat1 = Matrix([3] * 24, dims  = (4, 6))
+    mat2 = Matrix([4] * 30, dims = (6, 5))
     return isPassing(
-        expected = Matrix.const(rows=4, cols=5, val=72),
+        expected = Matrix([72] * 20, dims = (4, 5)),
         received = mat1 @ mat2
     )
 
-
 def testMatMul2() -> bool:
-    mat = Matrix(rows=3, cols=3, data=[
+    mat = Matrix([
         1, 2, 3,
         4, 5, 6,
         7, 8, 9
-    ])
+    ], dims = (3,3))
     return isPassing(
-        expected = 
-            Matrix(rows=3, cols=3, data=[
+        expected =
+            Matrix([
                 30, 36, 42,
                 66, 81, 96,
                 102, 126, 150
-            ]),
+            ], dims = (3,3)),
         received = mat @ mat
     )
 
 
 def testMatMulFail1() -> bool:
-    mat1 = Matrix.const(rows=4, cols=6, val=3)
-    mat2 = Matrix.const(rows=6, cols=5, val=4)
+    mat1 = Matrix(1, dims=(4, 2))
+    mat2 = Matrix(4, dims=(6,5))
     return raises(
-        lambda: mat2 @ mat1, 
-        ValueError, "Matrix A has dims (6, 5) while Matrix B has dims (4, 6). Incompatible for multiplication"
+        lambda: mat1 @ mat2,
+        ValueError, "Matrix 1 has dims (4, 2) while Matrix 2 has dims (6, 5); Incompatible for multiplication."
     )
 
 
 def testTranspose1() -> bool:
-    mat = Matrix(rows=3, cols=3, data=[
+    mat = Matrix([
         1,2,3,
         4,5,6,
         7,8,9
-    ])
+    ], dims = (3,3))
     return isPassing(
-        expected = 
-            Matrix(rows=3, cols=3, data=[
+        expected =
+            Matrix([
                 1,4,7,
                 2,5,8,
                 3,6,9
-            ]),
-        received = mat.t
+            ], dims = (3,3)),
+        received = mat.T
     )
-   
 
 def testTranspose2() -> bool:
-    mat = Matrix(rows=3, cols=3, data=[
+    mat = Matrix([
         1,2,3,
         4,5,6,
         7,8,9
-    ])
+    ], dims = (3,3))
     return isPassing(
         expected = mat,
-        received = mat.t.t
+        received = mat.T.T
     )
-
-
-def testGenerate1() -> bool:
-    return isPassing(
-        expected = Matrix.zeros(rows=3, cols=5),
-        received = Matrix.generate(rows=3, cols=5, generator=lambda: 0)
-    )
-
 
 if __name__  ==  "__main__":
     # runTestsFromEnv() should be safe when __name__ == "__main__"
