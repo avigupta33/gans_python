@@ -167,6 +167,48 @@ def testMatMul3() -> bool:
         received=mat1 @ mat2
     )
 
+def testMatMul4() -> bool:
+    mat1 = Matrix([4, 1, 7, 8, 10], dims = (1,5))
+    mat2 = Matrix([16, 18, 3, 1, 14], dims = (5,1))
+
+    return isPassing(
+        expected=Matrix([251]),
+        received=mat1 @ mat2
+    )
+
+def testMatMul5() -> bool:
+    mat1 = Matrix([16, 18, 3, 1, 14], dims = (5,1))
+    mat2 = Matrix([4, 1, 7, 8, 10], dims = (1,5))
+
+    return isPassing(
+        expected=Matrix([
+            [ 64,  16, 112, 128, 160],
+            [ 72,  18, 126, 144, 180],
+            [ 12,   3,  21,  24,  30],
+            [  4,   1,   7,   8,  10],
+            [ 56,  14,  98, 112, 140]]),
+        received=mat1 @ mat2
+    )
+
+def testMatMul6() -> bool:
+    mat1 = Matrix([[2, 4,],
+                   [5,13],
+                   [7,16],
+                   [1,0],
+                   [15, 18],
+                   [3, 5]])
+    mat2 = Matrix([[3, 1, 15, 88, 12, 13, 225, 22],
+                   [4, 5, 29, 79, 26, 39, 956, 12]])
+
+    return isPassing(
+        expected=Matrix([[   22,    22,   146,   492,   128,   182,  4274,    92],
+       [   67,    70,   452,  1467,   398,   572, 13553,   266],
+       [   85,    87,   569,  1880,   500,   715, 16871,   346],
+       [    3,     1,    15,    88,    12,    13,   225,    22],
+       [  117,   105,   747,  2742,   648,   897, 20583,   546],
+       [   29,    28,   190,   659,   166,   234,  5455,   126]]),
+        received=mat1 @ mat2
+    )
 
 def testMatMulFail1() -> bool:
     mat1 = Matrix(1, dims=(4, 2))
