@@ -1,7 +1,7 @@
 #ifndef QUANTUM_H
 #define QUANTUM_H
 
-#include "../python/pypath.h"
+#include "pypath.h"
 
 typedef double dtype;
 typedef uint_fast64_t it;
