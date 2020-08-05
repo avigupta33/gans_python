@@ -1,5 +1,5 @@
 import math
-from matrix import Matrix
+from Quantum import Matrix
 Vector = Matrix
 
 def binary_cross_entropy_loss(labels: Vector, preds: Vector) -> float:
