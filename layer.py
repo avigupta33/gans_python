@@ -1,7 +1,7 @@
 '''
 Layer class for neural networks
 '''
-from matrix import Matrix, Vector
+from Quantum import Matrix
 from typing import *
 import matrix_random as randm
 import math
