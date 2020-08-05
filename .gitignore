@@ -5,6 +5,4 @@
 **/__pycache__
 
 # Quantum extension
-Quantum/include/pypath.h
-Quantum/build/**
 *.so
