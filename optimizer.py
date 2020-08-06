@@ -5,7 +5,7 @@
 from typing import *
 import typing
 import math
-from matrix import Matrix
+from Quantum import Matrix
 
 Vector = Matrix
 

@@ -1,6 +1,6 @@
 from layer import Layer
 from typing import *
-from matrix import Matrix
+from Quantum import Matrix
 Vector = Matrix
 
 class Network:
